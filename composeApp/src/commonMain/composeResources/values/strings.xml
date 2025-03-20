@@ -1,0 +1,10 @@
+<resources>
+    <string name="top_movies">Top Movies</string>
+    <string name="movie_detail">Movie Detail</string>
+    <string name="similar_movies">Similar Movies</string>
+    <string name="view_all">View all</string>
+    <string name="retry">Retry</string>
+    <string name="network_problem">The Network has a little problem</string>
+    <string name="no_result">There is no search result</string>
+    <string name="can_not_load_more">Can't load more now.</string>
+</resources>
