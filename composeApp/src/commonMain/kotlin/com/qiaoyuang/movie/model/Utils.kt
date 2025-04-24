@@ -2,7 +2,15 @@ package com.qiaoyuang.movie.model
 
 import com.qiaoyuang.movie.detail.DetailViewModel
 import com.qiaoyuang.movie.home.HomeViewModel
+import com.qiaoyuang.movie.model.APIService.Companion.API_KEY_PARAM
+import com.qiaoyuang.movie.model.APIService.Companion.BASE_URL
+import com.qiaoyuang.movie.model.APIService.Companion.KEY
 import com.qiaoyuang.movie.search.SearchViewModel
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.defaultRequest
+import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.viewModel
@@ -11,8 +19,8 @@ import org.koin.dsl.module
 
 @OptIn(ExperimentalSerializationApi::class)
 internal val mainModule = module {
-    single { MovieRepository }
-    single { KtorService }
+    single<APIService> { KtorService(get()) }
+    single<MovieRepository> { MovieRepositoryImpl(get()) }
     single {
         Json {
             explicitNulls = false
@@ -22,6 +30,18 @@ internal val mainModule = module {
             coerceInputValues = true
             allowTrailingComma = true
             allowStructuredMapKeys = true
+        }
+    }
+    single {
+        HttpClient(CIO) {
+            expectSuccess = true
+            install(ContentNegotiation) {
+                json(get())
+            }
+            defaultRequest {
+                url(BASE_URL)
+                url.parameters.append(API_KEY_PARAM, KEY)
+            }
         }
     }
     viewModel { HomeViewModel(get()) }

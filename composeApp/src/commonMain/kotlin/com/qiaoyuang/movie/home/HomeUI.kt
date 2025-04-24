@@ -10,7 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material.Scaffold
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -30,8 +30,8 @@ import kotlinx.coroutines.Dispatchers
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.ERROR
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SHOW
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
+import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.ApiMovie
-import com.qiaoyuang.movie.model.KtorService
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import mymovie.composeapp.generated.resources.Res
@@ -130,7 +130,7 @@ internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
         Column {
             data.posterPath?.takeIf { it.isNotEmpty() }?.let {
                 AsyncImage(
-                    model = KtorService buildImageUrl it,
+                    model = APIService buildImageUrl it,
                     contentDescription = null,
                     modifier = asyncImageModifier
                 )

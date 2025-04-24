@@ -1,31 +1,29 @@
 package com.qiaoyuang.movie.model
 
 import io.ktor.client.*
-import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.serialization.kotlinx.json.*
-import org.koin.core.component.KoinComponent
-import org.koin.core.component.get
+import io.ktor.client.call.body
+import io.ktor.client.request.get
 
-object KtorService : KoinComponent {
+class KtorService(private val client: HttpClient) : APIService {
 
-    // Will move it to resource
-    private const val KEY = "e4f9e61f6ffd66639d33d3dde7e3159b"
+    override suspend infix fun fetchTopRated(page: Int): ApiMovieResponse =
+        client.get("movie/top_rated") {
+            url.parameters.append("page", page.toString())
+        }.body()
 
-    private const val BASE_URL = "https://api.themoviedb.org/3/"
-    private const val API_KEY_PARAM = "api_key"
+    override suspend fun movieDetail(movieId: Long): ApiMovie =
+        client.get("movie/$movieId").body()
 
-    val client = HttpClient(CIO) {
-        expectSuccess = true
-        install(ContentNegotiation) {
-            json(get())
-        }
-        defaultRequest {
-            url(BASE_URL)
-            url.parameters.append(API_KEY_PARAM, KEY)
-        }
-    }
+    override suspend fun similarMovies(movieId: Long, page: Int): ApiMovieResponse =
+        client.get("movie/$movieId/similar") {
+            url.parameters.append("page", page.toString())
+        }.body()
 
-    infix fun buildImageUrl(path: String) = "https://image.tmdb.org/t/p/w500$path"
+    override suspend fun fetchMovieGenre(): ApiMovieGenresResponse =
+        client.get("genre/movie/list").body()
+
+    override suspend fun search(word: String): ApiMovieResponse =
+        client.get("search/movie") {
+            url.parameters.append("query", word)
+        }.body()
 }

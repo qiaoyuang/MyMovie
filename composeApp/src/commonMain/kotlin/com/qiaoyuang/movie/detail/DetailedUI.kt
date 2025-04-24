@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
-import androidx.compose.material.Scaffold
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -27,8 +27,8 @@ import com.qiaoyuang.movie.basicui.contentTextColor
 import com.qiaoyuang.movie.basicui.sectionTitleColor
 import com.qiaoyuang.movie.detail.DetailViewModel.MovieDetailState
 import com.qiaoyuang.movie.home.Ratting
+import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.ApiMovie
-import com.qiaoyuang.movie.model.KtorService
 import com.qiaoyuang.movie.model.SimilarMovieShowModel
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.movie_detail
@@ -98,7 +98,7 @@ private fun MovieDetail(movie: ApiMovie) {
         Spacer(height24Modifier)
         movie.backdropPath?.let {
             AsyncImage(
-                model = KtorService buildImageUrl it,
+                model = APIService buildImageUrl it,
                 contentDescription = null,
                 modifier = movieBackDropModifier,
             )
@@ -177,7 +177,7 @@ private fun SimilarMovieItem(model: SimilarMovieShowModel, navigateToNextDetail:
     Column(Modifier.clickable { navigateToNextDetail(model.id) }) {
         model.posterPath?.let { path ->
             AsyncImage(
-                model = KtorService buildImageUrl path,
+                model = APIService buildImageUrl path,
                 contentDescription = null,
                 modifier = posterModifier
             )
