@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
+import androidx.compose.material.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -44,7 +44,9 @@ import kotlinx.coroutines.Dispatchers
 internal fun Detail(
     movieId: Long,
     navigateToNextDetail: (Long) -> Unit,
-    goBack: () -> Unit) {
+    navigateToAllSimilarMovies: (Long) -> Unit,
+    goBack: () -> Unit,
+) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -58,7 +60,7 @@ internal fun Detail(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { goBack() }) {
+                    IconButton(onClick = goBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
@@ -84,7 +86,7 @@ internal fun Detail(
                     MovieDetail(detailState.movie)
                     Spacer(height24Modifier)
                     detailState.similarMovies?.let {
-                        SimilarMovies(it, navigateToNextDetail)
+                        SimilarMovies(movieId,it, navigateToNextDetail, navigateToAllSimilarMovies)
                     }
                 }
             }
@@ -122,7 +124,12 @@ private fun MovieDetail(movie: ApiMovie) {
 }
 
 @Composable
-private fun SimilarMovies(models: List<SimilarMovieShowModel>, navigateToNextDetail: (Long) -> Unit) {
+private fun SimilarMovies(
+    movieId: Long,
+    models: List<SimilarMovieShowModel>,
+    navigateToNextDetail: (Long) -> Unit,
+    navigateToAllSimilarMovies: (Long) -> Unit,
+) {
     Column(containerModifier) {
         Row(
             modifier = fillMaxWidthModifier,
@@ -137,6 +144,7 @@ private fun SimilarMovies(models: List<SimilarMovieShowModel>, navigateToNextDet
                 fontWeight = FontWeight.Bold,
             )
             Row(
+                modifier = Modifier.clickable { navigateToAllSimilarMovies(movieId) },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(

@@ -6,6 +6,7 @@ import com.qiaoyuang.movie.model.APIService.Companion.API_KEY_PARAM
 import com.qiaoyuang.movie.model.APIService.Companion.BASE_URL
 import com.qiaoyuang.movie.model.APIService.Companion.KEY
 import com.qiaoyuang.movie.search.SearchViewModel
+import com.qiaoyuang.movie.similar.SimilarMoviesViewModel
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -47,6 +48,7 @@ internal val mainModule = module {
     viewModel { HomeViewModel(get()) }
     viewModel { SearchViewModel(get()) }
     viewModel { DetailViewModel(get(), it.get()) }
+    viewModel { SimilarMoviesViewModel(get(), get()) }
 }
 
 internal val GlobalKoinApplicationConfig: KoinAppDeclaration = {

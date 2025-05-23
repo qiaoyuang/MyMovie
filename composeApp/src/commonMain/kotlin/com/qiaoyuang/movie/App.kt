@@ -14,6 +14,7 @@ import com.qiaoyuang.movie.detail.Detail
 import com.qiaoyuang.movie.home.Home
 import com.qiaoyuang.movie.model.GlobalKoinApplicationConfig
 import com.qiaoyuang.movie.search.Search
+import com.qiaoyuang.movie.similar.SimilarMovies
 import org.koin.compose.KoinApplication
 
 @Composable
@@ -38,6 +39,7 @@ fun App() {
                     Detail(
                         movieId = id,
                         navigateToNextDetail = { movieId -> navController.navigate(DetailedPage(movieId)) },
+                        navigateToAllSimilarMovies = { movieId -> navController.navigate(SimilarMoviesPage(movieId)) },
                         goBack = { navController.popBackStack() }
                     )
                 }
@@ -48,6 +50,20 @@ fun App() {
                     popExitTransition = { shrinkVertically() },
                 ) {
                     Search { movieId -> navController.navigate(DetailedPage(movieId)) }
+                }
+
+                composable<SimilarMoviesPage>(
+                    enterTransition = { slideInHorizontally { weight -> weight } },
+                    exitTransition = null,
+                    popEnterTransition = null,
+                    popExitTransition = { slideOutHorizontally { weight -> weight } },
+                ) { backStackEntry ->
+                    val id = backStackEntry.toRoute<SimilarMoviesPage>().movieId
+                    SimilarMovies(
+                        movieId = id,
+                        navigateToDetail = { navController.navigate(DetailedPage(id)) },
+                        goBack = { navController.popBackStack() },
+                    )
                 }
             }
         }

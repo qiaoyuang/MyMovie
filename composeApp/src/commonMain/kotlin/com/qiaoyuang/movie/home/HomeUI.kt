@@ -5,12 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
+// noinspection UsingMaterialAndMaterial3Libraries
+import androidx.compose.material.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
@@ -32,8 +32,6 @@ import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SHOW
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
 import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.ApiMovie
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.can_not_load_more
 import mymovie.composeapp.generated.resources.top_movies
@@ -156,28 +154,6 @@ internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
         }
     }
 }
-
-@Composable
-fun LazyListState.OnBottomReached(
-    buffer: Int = 3,
-    onLoadMore: () -> Unit,
-) {
-    val shouldLoadMore = remember {
-        derivedStateOf {
-            val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull() ?: return@derivedStateOf false
-            lastVisibleItem.index >= layoutInfo.totalItemsCount - 1 - buffer
-        }
-    }
-    LaunchedEffect(shouldLoadMore) {
-        snapshotFlow { shouldLoadMore.value }
-            .distinctUntilChanged()
-            .filter { it }
-            .collect {
-                onLoadMore()
-            }
-    }
-}
-
 
 @Composable
 internal fun Ratting(voteAverage: String?) {
