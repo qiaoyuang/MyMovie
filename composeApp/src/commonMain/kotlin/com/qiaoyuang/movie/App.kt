@@ -61,7 +61,7 @@ fun App() {
                     val id = backStackEntry.toRoute<SimilarMoviesPage>().movieId
                     SimilarMovies(
                         movieId = id,
-                        navigateToDetail = { navController.navigate(DetailedPage(id)) },
+                        navigateToDetail = { navController.navigate(DetailedPage(it)) },
                         goBack = { navController.popBackStack() },
                     )
                 }
