@@ -2,6 +2,7 @@ package com.qiaoyuang.movie.model
 
 import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
+import kotlin.concurrent.Volatile
 
 class MovieRepositoryImpl(private val service: APIService) : MovieRepository {
 
@@ -20,14 +21,25 @@ class MovieRepositoryImpl(private val service: APIService) : MovieRepository {
     override suspend fun search(word: String): ApiMovieResponse =
         service search word
 
-    private var movieGenres: IntObjectMap<String>? = null
+    @Volatile
+    private var movieGenreList: List<MovieGenre>? = null
+    override suspend fun getMovieGenreList(): List<MovieGenre> = movieGenreList ?: try {
+        fetchMovieGenre().genres.also {
+            movieGenreList = it
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+        emptyList()
+    }
 
-    override suspend fun getMovieGenres(): IntObjectMap<String> = movieGenres ?: fetchMovieGenre().let {
-        val map = MutableIntObjectMap<String>(it.genres.size)
-        it.genres.forEach { (id, name) ->
+    @Volatile
+    private var movieGenreMap: IntObjectMap<String>? = null
+    override suspend fun getMovieGenreMap(): IntObjectMap<String> = movieGenreMap ?: getMovieGenreList().run {
+        val map = MutableIntObjectMap<String>(size)
+        forEach { (id, name) ->
             map[id] = name
         }
-        movieGenres = map
+        movieGenreMap = map
         map
     }
 }

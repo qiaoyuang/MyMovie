@@ -4,5 +4,7 @@ import androidx.collection.IntObjectMap
 
 interface MovieRepository : APIService {
 
-    suspend fun getMovieGenres(): IntObjectMap<String>
+    suspend fun getMovieGenreList(): List<MovieGenre>
+
+    suspend fun getMovieGenreMap(): IntObjectMap<String>
 }

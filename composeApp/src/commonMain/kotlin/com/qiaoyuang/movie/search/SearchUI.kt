@@ -1,15 +1,19 @@
 package com.qiaoyuang.movie.search
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.basicui.hintTextColor
 import com.qiaoyuang.movie.home.MovieItem
@@ -30,8 +34,8 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     val searchViewModel = koinViewModel<SearchViewModel>()
     Column {
         Spacer(modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars))
-        SearchCard(searchViewModel)
-        when (val searchResult = searchViewModel.searchResultFlow.collectAsState(Dispatchers.Main).value) {
+        SearchCard()
+        when (val searchResult = searchViewModel.finalResultFlow.collectAsState(Dispatchers.Main).value) {
             EMPTY -> {
                 if (searchViewModel.searchWord.isNotEmpty())
                     EmptyData(stringResource(Res.string.no_result))
@@ -56,10 +60,11 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
 }
 
 @Composable
-internal fun SearchCard(searchViewModel: SearchViewModel) {
+internal fun SearchCard() {
+    val searchViewModel = koinViewModel<SearchViewModel>()
     Column(modifier = horizontalPadding8Modifier) {
         OutlinedCard(
-            onClick = { },
+            onClick = {},
             modifier = searchCardModifier,
             border = BorderStroke(1.dp, hintTextColor),
             colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
@@ -82,14 +87,30 @@ internal fun SearchCard(searchViewModel: SearchViewModel) {
                     )
                 },
                 trailingIcon = {
+                    var openDropDownMenu by remember { mutableStateOf(false) }
                     IconButton(
-                        onClick = {},
+                        onClick = {
+                            openDropDownMenu = true
+                            searchViewModel.prepareGenreList()
+                        },
                     ) {
                         Icon(
                             imageVector = filter,
                             contentDescription = null,
                             modifier = size24Modifier
                         )
+                    }
+                    val genreList by searchViewModel.showGenreList
+                   DropdownMenu(
+                        expanded = openDropDownMenu,
+                        onDismissRequest = {
+                            openDropDownMenu = !openDropDownMenu
+                        },
+
+                    ) {
+                       genreList.forEach {
+                           FilterItem(it)
+                       }
                     }
                 },
                 singleLine = true,
@@ -111,6 +132,41 @@ internal fun SearchCard(searchViewModel: SearchViewModel) {
     }
 }
 
+@Composable
+private fun FilterItem(showGenre: SearchViewModel.ShowGenre) {
+    val searchViewModel = koinViewModel<SearchViewModel>()
+    var isSelected by showGenre.isSelected
+    Row(
+        modifier = Modifier.clickable {
+            isSelected = !isSelected
+            searchViewModel.selectGenre(showGenre)
+        }.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Spacer(size8Modifier)
+        if (isSelected) {
+            Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = null,
+                modifier = checkedIconModifier,
+                tint = commonBlueIconColor,
+            )
+        } else {
+            Spacer(checkedIconModifier)
+        }
+        Spacer(size8Modifier)
+        Text(
+            text = showGenre.genre.name,
+            modifier = Modifier.padding(4.dp),
+            fontSize = 16.sp,
+            lineHeight = 20.sp,
+        )
+        Spacer(size8Modifier)
+    }
+}
+
+private val size8Modifier = Modifier.size(8.dp)
 private val size24Modifier = Modifier.size(24.dp)
 private val horizontalPadding8Modifier = Modifier.padding(horizontal = 8.dp)
 private val searchCardModifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp)
+private val checkedIconModifier = Modifier.size(20.dp)

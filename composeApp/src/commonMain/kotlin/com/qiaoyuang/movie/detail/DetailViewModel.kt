@@ -43,7 +43,7 @@ internal class DetailViewModel(
                 .asSequence()
                 .filter { it.posterPath != null }
         }
-        val genres = repository.getMovieGenres()
+        val genres = repository.getMovieGenreMap()
         deferred.await()
             .map { it.convertToSimilarMovieShowModel(genres) }
             .toList()

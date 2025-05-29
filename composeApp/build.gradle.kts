@@ -9,6 +9,10 @@ plugins {
 }
 
 kotlin {
+    compilerOptions {
+        freeCompilerArgs.addAll("-Xwhen-guards", "-Xnon-local-break-continue", "-Xmulti-dollar-interpolation", "-Xbinary=preCodegenInlineThreshold=40")
+    }
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
@@ -32,6 +36,7 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material)
             implementation(compose.material3)
+            implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
             implementation(compose.components.uiToolingPreview)
@@ -113,4 +118,3 @@ android {
         debugImplementation(compose.uiTooling)
     }
 }
-
