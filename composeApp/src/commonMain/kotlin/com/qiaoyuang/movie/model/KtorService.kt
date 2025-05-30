@@ -4,7 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 
-class KtorService(private val client: HttpClient) : APIService {
+internal class KtorService(private val client: HttpClient) : APIService {
 
     override suspend infix fun fetchTopRated(page: Int): ApiMovieResponse =
         client.get("movie/top_rated") {

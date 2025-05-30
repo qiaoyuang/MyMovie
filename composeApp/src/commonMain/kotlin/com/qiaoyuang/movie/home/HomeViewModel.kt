@@ -12,10 +12,6 @@ import kotlin.concurrent.Volatile
 
 internal class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    companion object {
-        const val PAGE_LIMIT = 500
-    }
-
     init {
         getTopMovies(false)
     }
@@ -24,40 +20,44 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
     val movieState: StateFlow<TopMoviesState> = _movieState
 
     @Volatile
-    private var page = 1
+    private var currentPage = 1
+
+    @Volatile
+    private var pageLimit = Int.MAX_VALUE
+
     @Volatile
     var isLoading = false
     private var movieList = emptyList<ApiMovie>()
 
-    fun getTopMovies(isLoadMore: Boolean) {
-        if (isLoading || page > PAGE_LIMIT)
-            return
-        isLoading = true
-        viewModelScope.launch(Dispatchers.Default) {
-            if (_movieState.value is TopMoviesState.ERROR)
-                _movieState.emit(TopMoviesState.LOADING)
-            val state = try {
-                movieList += repository.fetchTopRated(page++).results
-                TopMoviesState.SHOW(movieList, false)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                page--
-                if (isLoadMore)
-                    TopMoviesState.SHOW(movieList, true)
-                else
-                    TopMoviesState.ERROR
-            }
-            _movieState.emit(state)
-            isLoading = false
+    fun getTopMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
+        if (isLoading || currentPage >= pageLimit) {
+            TopMoviesState.SHOW(movieList, false)
+            return@launch
         }
+        isLoading = true
+        if (_movieState.value is TopMoviesState.ERROR)
+            _movieState.emit(TopMoviesState.LOADING)
+        val state = try {
+            with(repository.fetchTopRated(currentPage)) {
+                currentPage = page + 1
+                pageLimit = totalPages
+                movieList += results
+            }
+            TopMoviesState.SHOW(movieList, false)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            if (isLoadMore)
+                TopMoviesState.SHOW(movieList, true)
+            else
+                TopMoviesState.ERROR
+        }
+        _movieState.emit(state)
+        isLoading = false
     }
 
     sealed interface TopMoviesState {
-
         data object LOADING : TopMoviesState
-
         data class SHOW(val value: List<ApiMovie>, val isLoadMoreFail: Boolean) : TopMoviesState
-
         data object ERROR : TopMoviesState
     }
 }

@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-class ApiMovieResponse(
+internal data class ApiMovieResponse(
     val page: Int,
     val results: List<ApiMovie>,
     @SerialName("total_pages") val totalPages: Int,

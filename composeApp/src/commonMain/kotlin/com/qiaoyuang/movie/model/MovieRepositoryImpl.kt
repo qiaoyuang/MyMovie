@@ -4,7 +4,7 @@ import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
 import kotlin.concurrent.Volatile
 
-class MovieRepositoryImpl(private val service: APIService) : MovieRepository {
+internal class MovieRepositoryImpl(private val service: APIService) : MovieRepository {
 
     override suspend infix fun fetchTopRated(page: Int): ApiMovieResponse =
         service fetchTopRated page

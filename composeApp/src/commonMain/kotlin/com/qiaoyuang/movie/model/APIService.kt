@@ -1,6 +1,6 @@
 package com.qiaoyuang.movie.model
 
-interface APIService {
+internal interface APIService {
 
     companion object {
         // Will move it to resource

@@ -2,7 +2,7 @@ package com.qiaoyuang.movie.model
 
 import androidx.collection.IntObjectMap
 
-interface MovieRepository : APIService {
+internal interface MovieRepository : APIService {
 
     suspend fun getMovieGenreList(): List<MovieGenre>
 

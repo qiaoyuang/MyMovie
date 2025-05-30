@@ -106,7 +106,6 @@ internal fun SearchCard() {
                         onDismissRequest = {
                             openDropDownMenu = !openDropDownMenu
                         },
-
                     ) {
                        genreList.forEach {
                            FilterItem(it)

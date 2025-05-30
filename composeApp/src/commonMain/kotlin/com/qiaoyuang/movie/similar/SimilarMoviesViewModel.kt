@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,10 +16,6 @@ internal class SimilarMoviesViewModel(
     private val repository: MovieRepository,
 ) : ViewModel() {
 
-    companion object {
-        const val PAGE_LIMIT = 500
-    }
-
     init {
         getSimilarMovies(false)
     }
@@ -27,24 +24,33 @@ internal class SimilarMoviesViewModel(
     val movieState: StateFlow<SimilarMoviesState> = _movieState
 
     @Volatile
-    private var page = 1
+    private var currentPage = 1
+
+    @Volatile
+    private var pageLimit = Int.MAX_VALUE
+
     @Volatile
     var isLoading = false
     private var movieList = emptyList<ApiMovie>()
 
     fun getSimilarMovies(isLoadMore: Boolean) {
-        if (isLoading || page > PAGE_LIMIT)
-            return
-        isLoading = true
         viewModelScope.launch(Dispatchers.Default) {
+            if (isLoading || currentPage >= pageLimit) {
+                SimilarMoviesState.SUCCESS(movieList, false)
+                return@launch
+            }
+            isLoading = true
             if (_movieState.value is SimilarMoviesState.ERROR)
                 _movieState.emit(SimilarMoviesState.LOADING)
             val state = try {
-                movieList += repository.similarMovies(movieId, page++).results
+                with(repository.similarMovies(movieId, currentPage)) {
+                    currentPage = page + 1
+                    pageLimit = totalPages
+                    movieList += results
+                }
                 SimilarMoviesState.SUCCESS(movieList, false)
             } catch (e: Exception) {
                 e.printStackTrace()
-                page--
                 if (isLoadMore)
                     SimilarMoviesState.SUCCESS(movieList, true)
                 else
