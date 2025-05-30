@@ -33,7 +33,8 @@ import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
 import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.ApiMovie
 import mymovie.composeapp.generated.resources.Res
-import mymovie.composeapp.generated.resources.can_not_load_more
+import mymovie.composeapp.generated.resources.load_more_failed
+import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.top_movies
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -111,8 +112,13 @@ internal fun Home(
                     }
                 }
 
-                if (movieState.isLoadMoreFail) {
-                    val snackBarMessage = stringResource(Res.string.can_not_load_more)
+                if (movieState.loadingMoreState != LoadingMoreState.SUCCESS) {
+                    val strId = when (movieState.loadingMoreState) {
+                        LoadingMoreState.FAIL -> Res.string.load_more_failed
+                        LoadingMoreState.NO_MORE -> Res.string.no_more_results
+                        else -> throw IllegalStateException("Impossible")
+                    }
+                    val snackBarMessage = stringResource(strId)
                     LaunchedEffect(Unit) {
                         snackbarHostState.showSnackbar(message = snackBarMessage)
                     }

@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
 @Composable
-fun LazyListState.OnBottomReached(
+internal fun LazyListState.OnBottomReached(
     buffer: Int = 3,
     onLoadMore: () -> Unit,
 ) {
@@ -28,4 +28,8 @@ fun LazyListState.OnBottomReached(
                 onLoadMore()
             }
     }
+}
+
+internal enum class LoadingMoreState {
+    SUCCESS, FAIL, NO_MORE
 }

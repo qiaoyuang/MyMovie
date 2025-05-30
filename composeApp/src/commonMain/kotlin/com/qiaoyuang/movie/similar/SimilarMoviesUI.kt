@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import com.qiaoyuang.movie.basicui.Error
 import com.qiaoyuang.movie.basicui.Loading
 import com.qiaoyuang.movie.basicui.LoadingMore
+import com.qiaoyuang.movie.basicui.LoadingMoreState
 import com.qiaoyuang.movie.basicui.OnBottomReached
 import com.qiaoyuang.movie.basicui.lightContentColor
 import com.qiaoyuang.movie.basicui.scrolledContainerColor
@@ -39,7 +40,8 @@ import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.LOA
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.SUCCESS
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.ERROR
 import mymovie.composeapp.generated.resources.Res
-import mymovie.composeapp.generated.resources.can_not_load_more
+import mymovie.composeapp.generated.resources.load_more_failed
+import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.similar_movies
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -111,8 +113,13 @@ internal fun SimilarMovies(
                         LoadingMore()
                     }
                 }
-                if (movieState.isLoadMoreFail) {
-                    val snackBarMessage = stringResource(Res.string.can_not_load_more)
+                if (movieState.loadingMoreState != LoadingMoreState.SUCCESS) {
+                    val strId = when (movieState.loadingMoreState) {
+                        LoadingMoreState.FAIL -> Res.string.load_more_failed
+                        LoadingMoreState.NO_MORE -> Res.string.no_more_results
+                        else -> throw IllegalStateException("Impossible")
+                    }
+                    val snackBarMessage = stringResource(strId)
                     LaunchedEffect(Unit) {
                         snackbarHostState.showSnackbar(message = snackBarMessage)
                     }

@@ -8,9 +8,8 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
-import coil3.Image
 
-val rattingStar: ImageVector by lazy {
+internal val rattingStar: ImageVector by lazy {
     ImageVector.Builder(
         name = "rattingStar",
         defaultWidth = 16.dp,
@@ -182,7 +181,7 @@ val filter: ImageVector by lazy {
     }.build()
 }
 
-val search: ImageVector by lazy {
+internal val search: ImageVector by lazy {
     ImageVector.Builder(
         name = "Search",
         defaultWidth = 24.dp,

@@ -2,9 +2,9 @@ package com.qiaoyuang.movie.similar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qiaoyuang.movie.basicui.LoadingMoreState
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
-import com.qiaoyuang.movie.model.log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,8 +35,10 @@ internal class SimilarMoviesViewModel(
 
     fun getSimilarMovies(isLoadMore: Boolean) {
         viewModelScope.launch(Dispatchers.Default) {
-            if (isLoading || currentPage >= pageLimit) {
-                SimilarMoviesState.SUCCESS(movieList, false)
+            if (isLoading)
+                return@launch
+            if (currentPage >= pageLimit) {
+                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.NO_MORE)
                 return@launch
             }
             isLoading = true
@@ -48,11 +50,11 @@ internal class SimilarMoviesViewModel(
                     pageLimit = totalPages
                     movieList += results
                 }
-                SimilarMoviesState.SUCCESS(movieList, false)
+                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.SUCCESS)
             } catch (e: Exception) {
                 e.printStackTrace()
                 if (isLoadMore)
-                    SimilarMoviesState.SUCCESS(movieList, true)
+                    SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.FAIL)
                 else
                     SimilarMoviesState.ERROR
             }
@@ -63,7 +65,7 @@ internal class SimilarMoviesViewModel(
 
     sealed interface SimilarMoviesState {
         data object LOADING : SimilarMoviesState
-        data class SUCCESS(val value: List<ApiMovie>, val isLoadMoreFail: Boolean) : SimilarMoviesState
+        data class SUCCESS(val value: List<ApiMovie>, val loadingMoreState: LoadingMoreState) : SimilarMoviesState
         data object ERROR : SimilarMoviesState
     }
 }

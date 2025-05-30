@@ -2,6 +2,7 @@ package com.qiaoyuang.movie.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.qiaoyuang.movie.basicui.LoadingMoreState
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.coroutines.Dispatchers
@@ -30,8 +31,10 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
     private var movieList = emptyList<ApiMovie>()
 
     fun getTopMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
-        if (isLoading || currentPage >= pageLimit) {
-            TopMoviesState.SHOW(movieList, false)
+        if (isLoading || currentPage >= pageLimit)
+            return@launch
+        if (currentPage >= pageLimit) {
+            TopMoviesState.SHOW(movieList, LoadingMoreState.NO_MORE)
             return@launch
         }
         isLoading = true
@@ -43,11 +46,11 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
                 pageLimit = totalPages
                 movieList += results
             }
-            TopMoviesState.SHOW(movieList, false)
+            TopMoviesState.SHOW(movieList, LoadingMoreState.SUCCESS)
         } catch (e: Exception) {
             e.printStackTrace()
             if (isLoadMore)
-                TopMoviesState.SHOW(movieList, true)
+                TopMoviesState.SHOW(movieList, LoadingMoreState.FAIL)
             else
                 TopMoviesState.ERROR
         }
@@ -57,7 +60,7 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
 
     sealed interface TopMoviesState {
         data object LOADING : TopMoviesState
-        data class SHOW(val value: List<ApiMovie>, val isLoadMoreFail: Boolean) : TopMoviesState
+        data class SHOW(val value: List<ApiMovie>, val loadingMoreState: LoadingMoreState) : TopMoviesState
         data object ERROR : TopMoviesState
     }
 }

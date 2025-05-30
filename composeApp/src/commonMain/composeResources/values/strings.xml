@@ -6,5 +6,6 @@
     <string name="retry">Retry</string>
     <string name="network_problem">The Network has a little problem</string>
     <string name="no_result">There is no search result</string>
-    <string name="can_not_load_more">Can't load more now.</string>
+    <string name="load_more_failed">Loading more failed</string>
+    <string name="no_more_results">No more result</string>
 </resources>
