@@ -1,9 +1,7 @@
 package com.qiaoyuang.movie.search
 
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.model.ApiMovie
@@ -16,9 +14,7 @@ import kotlin.time.toDuration
 
 internal class SearchViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    var searchWord by mutableStateOf("")
-
-    private val requestResultFlow = MutableSharedFlow<String>()
+    val searchWordFlow = MutableStateFlow("")
 
     private val selectedGenres = HashSet<Int>()
     private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
@@ -30,7 +26,7 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     }
 
     @OptIn(FlowPreview::class)
-    val finalResultFlow = requestResultFlow
+    val finalResultFlow = searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
         .combine(genreFilterFlow) { word, set ->
             if (word.isEmpty()) {
@@ -73,10 +69,6 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
             selectedGenres.remove(genre.genre.id)
         }
         genreFilterFlow.emit(selectedGenres)
-    }
-
-    fun query(word: String) = viewModelScope.launch(Dispatchers.Default) {
-        requestResultFlow.emit(word)
     }
 
     sealed interface SearchResultState {

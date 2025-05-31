@@ -37,8 +37,7 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
         SearchCard()
         when (val searchResult = searchViewModel.finalResultFlow.collectAsState(Dispatchers.Main).value) {
             EMPTY -> {
-                if (searchViewModel.searchWord.isNotEmpty())
-                    EmptyData(stringResource(Res.string.no_result))
+                EmptyData(stringResource(Res.string.no_result))
             }
             ERROR -> {
                 EmptyData(stringResource(Res.string.network_problem))
@@ -70,12 +69,13 @@ internal fun SearchCard() {
             colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
+            val searchWordFlow = searchViewModel.searchWordFlow
+            val searchWord by searchWordFlow.collectAsState()
             TextField(
-                value = searchViewModel.searchWord,
+                value = searchWord,
                 onValueChange = {
                     with(searchViewModel) {
-                        searchWord = it
-                        query(it)
+                        searchWordFlow.value = it
                     }
                 },
                 modifier = fillMaxWidthModifier,
