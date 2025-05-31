@@ -10,7 +10,7 @@ plugins {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xwhen-guards", "-Xnon-local-break-continue", "-Xmulti-dollar-interpolation", "-Xbinary=preCodegenInlineThreshold=40")
+        freeCompilerArgs.addAll("-Xwhen-guards", "-Xnon-local-break-continue", "-Xmulti-dollar-interpolation", /*"-Xbinary=preCodegenInlineThreshold=40"*/)
     }
 
     androidTarget {
@@ -44,7 +44,11 @@ kotlin {
             implementation(compose.animationGraphics)
 
             implementation(libs.androidx.annotation)
+            implementation(libs.androidx.lifecycle.common)
             implementation(libs.androidx.lifecycle.viewmodel)
+            api(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(libs.androidx.lifecycle.viewmodel.savestate)
+            implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(libs.androidx.navigation)
 
@@ -55,7 +59,7 @@ kotlin {
             implementation(libs.coil.ktor3)
 
             implementation(libs.ktor.core)
-            implementation(libs.ktor.cio)
+            // implementation(libs.ktor.cio)
             implementation(libs.ktor.negotiation)
             implementation(libs.ktor.json)
 
@@ -70,6 +74,11 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.koin.android)
+            implementation(libs.ktor.okhttp)
+        }
+
+        iosMain.dependencies {
+            implementation(libs.ktor.darwin)
         }
 
         commonTest.dependencies {

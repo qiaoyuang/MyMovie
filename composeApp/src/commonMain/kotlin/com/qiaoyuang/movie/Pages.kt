@@ -4,15 +4,15 @@ import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 @Serializable
-object Homepage
+internal object Homepage
 
 @JvmInline
 @Serializable
-value class DetailedPage(val movieId: Long)
+internal value class DetailedPage(val movieId: Long)
 
 @Serializable
-object SearchPage
+internal object SearchPage
 
 @JvmInline
 @Serializable
-value class SimilarMoviesPage(val movieId: Long)
+internal value class SimilarMoviesPage(val movieId: Long)

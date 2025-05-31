@@ -8,7 +8,6 @@ import com.qiaoyuang.movie.model.APIService.Companion.KEY
 import com.qiaoyuang.movie.search.SearchViewModel
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.serialization.kotlinx.json.json
@@ -34,7 +33,7 @@ internal val mainModule = module {
         }
     }
     single {
-        HttpClient(CIO) {
+        HttpClient(ktorEngine) {
             expectSuccess = true
             install(ContentNegotiation) {
                 json(get())

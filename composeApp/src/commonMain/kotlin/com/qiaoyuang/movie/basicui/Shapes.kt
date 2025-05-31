@@ -61,7 +61,7 @@ internal val rattingStar: ImageVector by lazy {
     }.build()
 }
 
-val rightArrow: ImageVector by lazy {
+internal val rightArrow: ImageVector by lazy {
     ImageVector.Builder(
         name = "rightArrow",
         defaultWidth = 20.dp,
@@ -101,7 +101,7 @@ val rightArrow: ImageVector by lazy {
     }.build()
 }
 
-val filter: ImageVector by lazy {
+internal val filter: ImageVector by lazy {
     ImageVector.Builder(
         name = "Filter",
         defaultWidth = 24.dp,

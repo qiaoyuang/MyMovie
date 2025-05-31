@@ -80,7 +80,6 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     }
 
     sealed interface SearchResultState {
-
         data object EMPTY : SearchResultState
         data class SUCCESS(val value: List<ApiMovie>) : SearchResultState
         data object ERROR : SearchResultState
