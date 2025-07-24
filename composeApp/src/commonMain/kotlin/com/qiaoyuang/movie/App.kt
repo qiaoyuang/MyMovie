@@ -1,6 +1,10 @@
 package com.qiaoyuang.movie
 
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -23,7 +27,10 @@ fun App() {
         MaterialTheme {
             val navController = rememberNavController()
             NavHost(navController = navController, startDestination = Homepage) {
-                composable<Homepage> {
+                composable<Homepage>(
+                    exitTransition = { scaleOut() + fadeOut() },
+                    popEnterTransition = { scaleIn() + fadeIn() },
+                ) {
                     Home(
                         navigateToDetail = { movieId -> navController.navigate(DetailedPage(movieId)) },
                         navigateToSearch = { navController.navigate(SearchPage) }
@@ -31,8 +38,8 @@ fun App() {
                 }
                 composable<DetailedPage>(
                     enterTransition = { slideInHorizontally { weight -> weight } },
-                    exitTransition = null,
-                    popEnterTransition = null,
+                    exitTransition = { scaleOut() + fadeOut() },
+                    popEnterTransition = { scaleIn() + fadeIn() },
                     popExitTransition = { slideOutHorizontally { weight -> weight } },
                 ) { backStackEntry ->
                     val id = backStackEntry.toRoute<DetailedPage>().movieId
@@ -45,8 +52,8 @@ fun App() {
                 }
                 composable<SearchPage>(
                     enterTransition = { expandVertically() },
-                    exitTransition = null,
-                    popEnterTransition = null,
+                    exitTransition = { scaleOut() + fadeOut() },
+                    popEnterTransition = { scaleIn() + fadeIn() },
                     popExitTransition = { shrinkVertically() },
                 ) {
                     Search { movieId -> navController.navigate(DetailedPage(movieId)) }
@@ -54,8 +61,8 @@ fun App() {
 
                 composable<SimilarMoviesPage>(
                     enterTransition = { slideInHorizontally { weight -> weight } },
-                    exitTransition = null,
-                    popEnterTransition = null,
+                    exitTransition = { scaleOut() + fadeOut() },
+                    popEnterTransition = { scaleIn() + fadeIn() },
                     popExitTransition = { slideOutHorizontally { weight -> weight } },
                 ) { backStackEntry ->
                     val id = backStackEntry.toRoute<SimilarMoviesPage>().movieId

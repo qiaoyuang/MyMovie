@@ -1,16 +1,19 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.cocoapods)
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlinx.serialization)
 }
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xwhen-guards", "-Xnon-local-break-continue", "-Xmulti-dollar-interpolation", /*"-Xbinary=preCodegenInlineThreshold=40"*/)
+        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xnested-type-aliases")
     }
 
     androidTarget {
@@ -18,18 +21,30 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_17)
         }
     }
-    
+
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
-    ).forEach { iosTarget ->
-        iosTarget.binaries.framework {
+        iosSimulatorArm64(),
+    ).forEach {
+        it.compilerOptions {
+            freeCompilerArgs.addAll("-Xbinary=preCodegenInlineThreshold=40")
+        }
+    }
+
+    cocoapods {
+        summary = "The main implementation of MyMovie"
+        homepage = "https://github.com/qiaoyuang/MyMovie"
+        name = "ComposeApp"
+        version = "1.0"
+        ios.deploymentTarget = "17.0"
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        framework {
             baseName = "ComposeApp"
             isStatic = true
         }
     }
-    
+
     sourceSets {
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -67,6 +82,11 @@ kotlin {
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.koin.compose.viewmodel.navigation)
+
+            implementation(libs.mmkv.kotlin)
+
+            implementation(libs.sqllin.driver)
+            implementation(libs.sqllin.dsl)
         }
 
         androidMain.dependencies {
@@ -86,6 +106,11 @@ kotlin {
             implementation(libs.koin.test)
         }
     }
+}
+
+dependencies {
+    add("kspCommonMainMetadata", libs.sqllin.processor)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
 
 android {
@@ -122,6 +147,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
     }
     dependencies {
         debugImplementation(compose.uiTooling)
