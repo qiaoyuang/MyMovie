@@ -11,24 +11,5 @@ captures
 .externalNativeBuild
 .cxx
 
-*.xcodeproj/*
-!*.xcodeproj/project.pbxproj
-!*.xcodeproj/xcshareddata/
-!*.xcodeproj/project.xcworkspace/
-!*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
-
-iosApp/build/
-iosApp/DerivedData/
-iosApp/**/Pods/
-iosApp/**/Products/
-iosApp/**/Frameworks/
-iosApp/**/*.xcconfig
-iosApp/*.xcodeproj/
-iosApp/*.xcworkspace/
-!iosApp/*.xcodeproj/project.pbxproj
-!iosApp/*.xcodeproj/xcshareddata/
-!iosApp/*.xcworkspace/contents.xcworkspacedata
-!iosApp/**/xcshareddata/xcschemes/
-iosApp/*.xcodeproj/xcuserdata/
-iosApp/*.xcworkspace/xcuserdata/
+Pods/
