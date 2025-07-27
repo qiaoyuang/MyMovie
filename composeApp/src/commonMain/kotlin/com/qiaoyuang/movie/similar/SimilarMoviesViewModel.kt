@@ -12,8 +12,8 @@ import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
 
 internal class SimilarMoviesViewModel(
-    private val movieId: Long,
     private val repository: MovieRepository,
+    private val movieId: Long,
 ) : ViewModel() {
 
     init {

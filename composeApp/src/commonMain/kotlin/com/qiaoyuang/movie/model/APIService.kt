@@ -1,5 +1,8 @@
 package com.qiaoyuang.movie.model
 
+import io.mockative.Mockable
+
+@Mockable
 internal interface APIService {
 
     companion object {

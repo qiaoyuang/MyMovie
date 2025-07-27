@@ -2,13 +2,16 @@ import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.cocoapods)
-    alias(libs.plugins.androidApplication)
-    alias(libs.plugins.jetbrainsCompose)
-    alias(libs.plugins.compose.compiler)
-    alias(libs.plugins.ksp)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.kotlin.cocoapods)
+
+    alias(libs.plugins.jetbrains.compose)
+    alias(libs.plugins.ksp)
+
+    alias(libs.plugins.android.application)
+    // alias(libs.plugins.mockative)
 }
 
 kotlin {
@@ -61,7 +64,7 @@ kotlin {
             implementation(libs.androidx.annotation)
             implementation(libs.androidx.lifecycle.common)
             implementation(libs.androidx.lifecycle.viewmodel)
-            api(libs.androidx.lifecycle.viewmodel.compose)
+            implementation(libs.androidx.lifecycle.viewmodel.compose)
             implementation(libs.androidx.lifecycle.viewmodel.savestate)
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.runtime.compose)
@@ -74,7 +77,7 @@ kotlin {
             implementation(libs.coil.ktor3)
 
             implementation(libs.ktor.core)
-            // implementation(libs.ktor.cio)
+            implementation(libs.ktor.cio)
             implementation(libs.ktor.negotiation)
             implementation(libs.ktor.json)
 
@@ -87,6 +90,15 @@ kotlin {
 
             implementation(libs.sqllin.driver)
             implementation(libs.sqllin.dsl)
+
+            implementation(libs.mockative)
+        }
+
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.koin.test)
+            implementation(libs.mockative)
         }
 
         androidMain.dependencies {
@@ -99,11 +111,6 @@ kotlin {
 
         iosMain.dependencies {
             implementation(libs.ktor.darwin)
-        }
-
-        commonTest.dependencies {
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
         }
     }
 }

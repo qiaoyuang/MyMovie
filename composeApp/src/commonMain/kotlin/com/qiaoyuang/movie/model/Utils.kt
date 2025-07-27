@@ -47,7 +47,7 @@ internal val mainModule = module {
     viewModel { HomeViewModel(get()) }
     viewModel { SearchViewModel(get()) }
     viewModel { DetailViewModel(get(), it.get()) }
-    viewModel { SimilarMoviesViewModel(it.get(), get()) }
+    viewModel { SimilarMoviesViewModel(get(), it.get()) }
 }
 
 internal val GlobalKoinApplicationConfig: KoinAppDeclaration = {

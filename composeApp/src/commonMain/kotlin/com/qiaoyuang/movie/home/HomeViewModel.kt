@@ -13,10 +13,6 @@ import kotlin.concurrent.Volatile
 
 internal class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    init {
-        getTopMovies(false)
-    }
-
     private val _movieState = MutableStateFlow<TopMoviesState>(TopMoviesState.LOADING)
     val movieState: StateFlow<TopMoviesState> = _movieState
 
@@ -31,10 +27,10 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
     private var movieList = emptyList<ApiMovie>()
 
     fun getTopMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
-        if (isLoading || currentPage >= pageLimit)
+        if (isLoading)
             return@launch
-        if (currentPage >= pageLimit) {
-            TopMoviesState.SHOW(movieList, LoadingMoreState.NO_MORE)
+        if (currentPage > pageLimit) {
+            _movieState.emit(TopMoviesState.SHOW(movieList, LoadingMoreState.NO_MORE))
             return@launch
         }
         isLoading = true
