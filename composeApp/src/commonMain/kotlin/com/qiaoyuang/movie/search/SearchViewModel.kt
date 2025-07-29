@@ -19,11 +19,7 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     private val selectedGenres = HashSet<Int>()
     private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
 
-    init {
-        viewModelScope.launch(Dispatchers.Default) {
-            genreFilterFlow.emit(selectedGenres)
-        }
-    }
+    suspend fun init() = genreFilterFlow.emit(selectedGenres)
 
     @OptIn(FlowPreview::class)
     val finalResultFlow = searchWordFlow
@@ -43,7 +39,7 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
             }
         }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SearchResultState.EMPTY)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), SearchResultState.EMPTY)
 
     data class ShowGenre(
         val genre: MovieGenre,
@@ -52,10 +48,10 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
 
     val showGenreList = mutableStateOf(emptyList<ShowGenre>())
 
-    fun prepareGenreList() {
+    fun prepareGenreList(): Job? {
         if (showGenreList.value.isNotEmpty())
-            return
-        viewModelScope.launch(Dispatchers.Default) {
+            return null
+        return viewModelScope.launch(Dispatchers.Default) {
             showGenreList.value = repository.getMovieGenreList().map {
                 ShowGenre(it)
             }

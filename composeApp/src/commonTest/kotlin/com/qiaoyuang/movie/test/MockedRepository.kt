@@ -15,14 +15,15 @@ internal class MockedRepository : MovieRepository {
         const val TOTAL_PAGES = 5
         const val TOTAL_RESULTS = 25
         const val COUNT = 5
+        const val GENRE_SIZE = 3
     }
 
     private fun generateMovie(id: Long): ApiMovie = ApiMovie(
         id = id,
         title = ('a'.code + id.toInt()).toChar().toString(),
         overview = "abc",
-        posterPath = null,
-        backdropPath = null,
+        posterPath = "https://xyz",
+        backdropPath = "https://uvw",
         voteAverage = id.toDouble().toString(),
         genreIds = listOf(id.toInt() % 3),
     )
@@ -77,7 +78,7 @@ internal class MockedRepository : MovieRepository {
 
     override suspend fun search(word: String): ApiMovieResponse = ApiMovieResponse(
         page = 1,
-        results = generateMovies(COUNT),
+        results = generateMovies(TOTAL_RESULTS),
         totalPages = TOTAL_PAGES,
         totalResults = TOTAL_RESULTS,
     )

@@ -87,6 +87,9 @@ internal fun SimilarMovies(
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) {
         val similarMoviesViewModel = koinViewModel<SimilarMoviesViewModel> { parametersOf(movieId) }
+        LaunchedEffect(Unit) {
+            similarMoviesViewModel.getSimilarMovies(false)
+        }
         val scrollState = rememberLazyListState()
         scrollState.OnBottomReached {
             similarMoviesViewModel.getSimilarMovies(true)

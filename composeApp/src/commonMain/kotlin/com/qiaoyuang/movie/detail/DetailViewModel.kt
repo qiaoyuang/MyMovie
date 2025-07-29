@@ -15,10 +15,6 @@ internal class DetailViewModel(
     private val movieId: Long,
 ) : ViewModel() {
 
-    init {
-        updateUI()
-    }
-
     /*class Factory(private val movieId: Long) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =

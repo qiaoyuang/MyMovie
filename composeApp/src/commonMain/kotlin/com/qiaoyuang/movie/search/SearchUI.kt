@@ -32,6 +32,9 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     val searchViewModel = koinViewModel<SearchViewModel>()
+    LaunchedEffect(Unit) {
+        searchViewModel.init()
+    }
     Column {
         Spacer(modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars))
         SearchCard()

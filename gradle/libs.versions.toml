@@ -14,7 +14,7 @@ androidx-activityCompose = "1.10.1"
 androidx-appcompat = "1.7.1"
 androidx-core-ktx = "1.16.0"
 androidx-lifecycle = "2.9.1"
-androidx-navigation = "2.9.0-beta04"
+androidx-navigation = "2.9.0-beta03"
 androidx-test-junit = "1.2.1"
 desugar-jdk-libs = "2.1.5"
 
@@ -27,6 +27,7 @@ koin = "4.1.0"
 mmkv-kotlin = "1.2.18"
 sqllin = "1.4.4"
 mockative = "3.0.1"
+mmkv-origin = "2.2.2"
 
 [libraries]
 

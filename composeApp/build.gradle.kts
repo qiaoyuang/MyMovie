@@ -46,6 +46,11 @@ kotlin {
             baseName = "ComposeApp"
             isStatic = true
         }
+        // Just for unit tests
+        pod(
+            name = "MMKV",
+            version = libs.versions.mmkv.origin.get(),
+        )
     }
 
     sourceSets {

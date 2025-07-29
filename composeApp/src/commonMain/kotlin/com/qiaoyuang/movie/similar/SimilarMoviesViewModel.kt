@@ -16,10 +16,6 @@ internal class SimilarMoviesViewModel(
     private val movieId: Long,
 ) : ViewModel() {
 
-    init {
-        getSimilarMovies(false)
-    }
-
     private val _movieState = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.LOADING)
     val movieState: StateFlow<SimilarMoviesState> = _movieState
 
@@ -33,34 +29,32 @@ internal class SimilarMoviesViewModel(
     var isLoading = false
     private var movieList = emptyList<ApiMovie>()
 
-    fun getSimilarMovies(isLoadMore: Boolean) {
-        viewModelScope.launch(Dispatchers.Default) {
-            if (isLoading)
-                return@launch
-            if (currentPage >= pageLimit) {
-                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.NO_MORE)
-                return@launch
-            }
-            isLoading = true
-            if (_movieState.value is SimilarMoviesState.ERROR)
-                _movieState.emit(SimilarMoviesState.LOADING)
-            val state = try {
-                with(repository.similarMovies(movieId, currentPage)) {
-                    currentPage = page + 1
-                    pageLimit = totalPages
-                    movieList += results
-                }
-                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.SUCCESS)
-            } catch (e: Exception) {
-                e.printStackTrace()
-                if (isLoadMore)
-                    SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.FAIL)
-                else
-                    SimilarMoviesState.ERROR
-            }
-            _movieState.emit(state)
-            isLoading = false
+    fun getSimilarMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
+        if (isLoading)
+            return@launch
+        if (currentPage > pageLimit) {
+            _movieState.emit(SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.NO_MORE))
+            return@launch
         }
+        isLoading = true
+        if (_movieState.value is SimilarMoviesState.ERROR)
+            _movieState.emit(SimilarMoviesState.LOADING)
+        val state = try {
+            with(repository.similarMovies(movieId, currentPage)) {
+                currentPage = page + 1
+                pageLimit = totalPages
+                movieList += results
+            }
+            SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.SUCCESS)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            if (isLoadMore)
+                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.FAIL)
+            else
+                SimilarMoviesState.ERROR
+        }
+        _movieState.emit(state)
+        isLoading = false
     }
 
     sealed interface SimilarMoviesState {
