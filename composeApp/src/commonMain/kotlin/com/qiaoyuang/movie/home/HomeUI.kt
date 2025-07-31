@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-// noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
@@ -28,13 +27,14 @@ import com.qiaoyuang.movie.basicui.containerColor
 import kotlinx.coroutines.Dispatchers
 
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.ERROR
-import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SHOW
+import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
 import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.ApiMovie
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.load_more_failed
 import mymovie.composeapp.generated.resources.no_more_results
+import mymovie.composeapp.generated.resources.no_result
 import mymovie.composeapp.generated.resources.top_movies
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -45,13 +45,8 @@ internal fun Home(
     navigateToDetail: (id: Long) -> Unit,
     navigateToSearch: () -> Unit,
 ) {
-    val homeViewModel = koinViewModel<HomeViewModel>()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(Unit) {
-        homeViewModel.getTopMovies(false)
-    }
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -85,47 +80,50 @@ internal fun Home(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) {
+        val homeViewModel = koinViewModel<HomeViewModel>()
+        LaunchedEffect(Unit) {
+            homeViewModel.getTopMovies()
+        }
+
         val listState = rememberLazyListState()
         listState.OnBottomReached {
-            homeViewModel.getTopMovies(true)
+            homeViewModel.getTopMovies()
         }
-        when (val movieState = homeViewModel.movieState.collectAsState(Dispatchers.Main).value) {
-            LOADING -> Loading()
-            ERROR -> Error {
-                homeViewModel.getTopMovies(false)
-            }
-            is SHOW -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    state = listState,
-                ) {
-                    item {
-                        Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                    }
-                    items(
-                        items = movieState.value,
-                        key = { it.id },
-                        itemContent = {
-                            MovieItem(it, navigateToDetail)
-                            HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
-                        },
-                    )
-
-                    if (homeViewModel.isLoading) item {
-                        LoadingMore()
-                    }
+        val movieState by homeViewModel.movieState.collectAsState(Dispatchers.Main)
+        if (movieState.data.isEmpty()) when (movieState) {
+            is LOADING-> Loading()
+            is ERROR -> Error { homeViewModel.getTopMovies() }
+            is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                state = listState,
+            ) {
+                item {
+                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
                 }
+                items(
+                    items = movieState.data,
+                    key = { it.id },
+                    itemContent = {
+                        MovieItem(it, navigateToDetail)
+                        HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
+                    },
+                )
 
-                if (movieState.loadingMoreState != LoadingMoreState.SUCCESS) {
-                    val strId = when (movieState.loadingMoreState) {
-                        LoadingMoreState.FAIL -> Res.string.load_more_failed
-                        LoadingMoreState.NO_MORE -> Res.string.no_more_results
-                        else -> throw IllegalStateException("Impossible")
-                    }
-                    val snackBarMessage = stringResource(strId)
-                    LaunchedEffect(Unit) {
-                        snackbarHostState.showSnackbar(message = snackBarMessage)
-                    }
+                if (movieState is LOADING) item {
+                    LoadingMore()
+                }
+            }
+            val strId = when (movieState) {
+                is SUCCESS if ((movieState as SUCCESS).isNoMore) -> Res.string.no_more_results
+                is ERROR -> Res.string.load_more_failed
+                else -> null
+            }
+            strId?.let {
+                val snackBarMessage = stringResource(it)
+                LaunchedEffect(Unit) {
+                    snackbarHostState.showSnackbar(message = snackBarMessage)
                 }
             }
         }

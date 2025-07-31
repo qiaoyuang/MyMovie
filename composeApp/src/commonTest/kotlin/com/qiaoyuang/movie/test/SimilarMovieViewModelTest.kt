@@ -11,13 +11,13 @@ class SimilarMovieViewModelTest : BasicTest() {
     @Test
     fun test_getSimilarMovies() = runTest {
         val viewModel = SimilarMoviesViewModel(MockedRepository(), 1L)
-        viewModel.getSimilarMovies(false).join()
-        assertEquals(5, (viewModel.movieState.value as? SUCCESS)?.value?.size)
+        viewModel.getSimilarMovies().join()
+        assertEquals(5, (viewModel.movieState.value as? SUCCESS)?.data?.size)
         repeat(4) {
-            viewModel.getSimilarMovies(true).join()
+            viewModel.getSimilarMovies().join()
         }
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.value?.size)
-        viewModel.getSimilarMovies(true).join()
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.value?.size)
+        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
+        viewModel.getSimilarMovies().join()
+        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
     }
 }

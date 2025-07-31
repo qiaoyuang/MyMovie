@@ -2,7 +2,6 @@ package com.qiaoyuang.movie.similar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qiaoyuang.movie.basicui.LoadingMoreState
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.coroutines.Dispatchers
@@ -10,13 +9,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
+import kotlin.jvm.JvmInline
 
 internal class SimilarMoviesViewModel(
     private val repository: MovieRepository,
     private val movieId: Long,
 ) : ViewModel() {
 
-    private val _movieState = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.LOADING)
+    private val _movieState = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.SUCCESS(emptyList(), false))
     val movieState: StateFlow<SimilarMoviesState> = _movieState
 
     @Volatile
@@ -25,41 +25,39 @@ internal class SimilarMoviesViewModel(
     @Volatile
     private var pageLimit = Int.MAX_VALUE
 
-    @Volatile
-    var isLoading = false
-    private var movieList = emptyList<ApiMovie>()
-
-    fun getSimilarMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
-        if (isLoading)
+    fun getSimilarMovies() = viewModelScope.launch(Dispatchers.Default) {
+        if (movieState.value is SimilarMoviesState.LOADING)
             return@launch
+        val currentList = movieState.value.data
         if (currentPage > pageLimit) {
-            _movieState.emit(SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.NO_MORE))
+            _movieState.emit(SimilarMoviesState.SUCCESS(currentList, true))
             return@launch
         }
-        isLoading = true
-        if (_movieState.value is SimilarMoviesState.ERROR)
-            _movieState.emit(SimilarMoviesState.LOADING)
+        _movieState.emit(SimilarMoviesState.LOADING(currentList))
         val state = try {
-            with(repository.similarMovies(movieId, currentPage)) {
+            val list = with(repository.similarMovies(movieId, currentPage)) {
                 currentPage = page + 1
                 pageLimit = totalPages
-                movieList += results
+                currentList + results
             }
-            SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.SUCCESS)
+            SimilarMoviesState.SUCCESS(list, false)
         } catch (e: Exception) {
             e.printStackTrace()
-            if (isLoadMore)
-                SimilarMoviesState.SUCCESS(movieList, LoadingMoreState.FAIL)
-            else
-                SimilarMoviesState.ERROR
+            SimilarMoviesState.ERROR(currentList)
         }
         _movieState.emit(state)
-        isLoading = false
     }
 
     sealed interface SimilarMoviesState {
-        data object LOADING : SimilarMoviesState
-        data class SUCCESS(val value: List<ApiMovie>, val loadingMoreState: LoadingMoreState) : SimilarMoviesState
-        data object ERROR : SimilarMoviesState
+
+        val data: List<ApiMovie>
+
+        @JvmInline
+        value class LOADING(override val data: List<ApiMovie>) : SimilarMoviesState
+
+        data class SUCCESS(override val data: List<ApiMovie>, val isNoMore: Boolean) : SimilarMoviesState
+
+        @JvmInline
+        value class ERROR(override val data: List<ApiMovie>) : SimilarMoviesState
     }
 }

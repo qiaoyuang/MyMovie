@@ -2,7 +2,6 @@ package com.qiaoyuang.movie.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qiaoyuang.movie.basicui.LoadingMoreState
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.coroutines.Dispatchers
@@ -10,10 +9,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlin.concurrent.Volatile
+import kotlin.jvm.JvmInline
 
 internal class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    private val _movieState = MutableStateFlow<TopMoviesState>(TopMoviesState.LOADING)
+    private val _movieState = MutableStateFlow<TopMoviesState>(TopMoviesState.SUCCESS(emptyList(), false))
     val movieState: StateFlow<TopMoviesState> = _movieState
 
     @Volatile
@@ -22,41 +22,39 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
     @Volatile
     private var pageLimit = Int.MAX_VALUE
 
-    @Volatile
-    var isLoading = false
-    private var movieList = emptyList<ApiMovie>()
-
-    fun getTopMovies(isLoadMore: Boolean) = viewModelScope.launch(Dispatchers.Default) {
-        if (isLoading)
+    fun getTopMovies() = viewModelScope.launch(Dispatchers.Default) {
+        if (movieState.value is TopMoviesState.LOADING)
             return@launch
+        val currentList = movieState.value.data
         if (currentPage > pageLimit) {
-            _movieState.emit(TopMoviesState.SHOW(movieList, LoadingMoreState.NO_MORE))
+            _movieState.emit(TopMoviesState.SUCCESS(currentList, true))
             return@launch
         }
-        isLoading = true
-        if (_movieState.value is TopMoviesState.ERROR)
-            _movieState.emit(TopMoviesState.LOADING)
+        _movieState.emit(TopMoviesState.LOADING(currentList))
         val state = try {
-            with(repository.fetchTopRated(currentPage)) {
+            val newList = with(repository.fetchTopRated(currentPage)) {
                 currentPage = page + 1
                 pageLimit = totalPages
-                movieList += results
+                currentList + results
             }
-            TopMoviesState.SHOW(movieList, LoadingMoreState.SUCCESS)
+            TopMoviesState.SUCCESS(newList, false)
         } catch (e: Exception) {
             e.printStackTrace()
-            if (isLoadMore)
-                TopMoviesState.SHOW(movieList, LoadingMoreState.FAIL)
-            else
-                TopMoviesState.ERROR
+            TopMoviesState.ERROR(currentList)
         }
         _movieState.emit(state)
-        isLoading = false
     }
 
     sealed interface TopMoviesState {
-        data object LOADING : TopMoviesState
-        data class SHOW(val value: List<ApiMovie>, val loadingMoreState: LoadingMoreState) : TopMoviesState
-        data object ERROR : TopMoviesState
+
+        val data: List<ApiMovie>
+
+        @JvmInline
+        value class LOADING(override val data: List<ApiMovie>) : TopMoviesState
+
+        data class SUCCESS(override val data: List<ApiMovie>, val isNoMore: Boolean) : TopMoviesState
+
+        @JvmInline
+        value class ERROR(override val data: List<ApiMovie>) : TopMoviesState
     }
 }

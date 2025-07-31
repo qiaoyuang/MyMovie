@@ -29,7 +29,3 @@ internal fun LazyListState.OnBottomReached(
             }
     }
 }
-
-internal enum class LoadingMoreState {
-    SUCCESS, FAIL, NO_MORE
-}
