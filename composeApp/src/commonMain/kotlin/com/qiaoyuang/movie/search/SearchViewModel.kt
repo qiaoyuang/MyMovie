@@ -27,7 +27,10 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
 
     typealias DataWithState = Pair<List<ApiMovie>, SearchResultState>
 
-    private val default = DataWithState(emptyList(), SearchResultState.SUCCESS())
+    private val emptyList = emptyList<ApiMovie>()
+    private val default = DataWithState(emptyList, SearchResultState.SUCCESS())
+    private val emptyLoading = DataWithState(emptyList, SearchResultState.LOADING)
+    private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
 
     private val _searchWordFlow = MutableStateFlow("")
     val searchWordFlow: StateFlow<String> = _searchWordFlow
@@ -43,32 +46,27 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     @OptIn(FlowPreview::class)
     private val combinedFlow = _searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
-        .combine(_pageStateFlow) { word, page -> word to page }
-        .scan(default) { (currentResults, state), (word, page) ->
+        .combine(_pageStateFlow) { word, page ->
             if (word.isBlank())
-                default
+                defaultTriple
             else try {
                 val (_, results, totalPages, _) = repository.search(word, page)
-                val newResults = if (page == 1)
-                    results
-                else
-                    currentResults + results
-                DataWithState(newResults, SearchResultState.SUCCESS(page == totalPages))
+                Triple(page, results, SearchResultState.SUCCESS(page == totalPages))
             } catch (e: Exception) {
                 e.printStackTrace()
-                val newResults = if (page == 1)
-                    emptyList()
-                else
-                    currentResults
-                DataWithState(newResults, SearchResultState.ERROR)
+                Triple(page, emptyList, SearchResultState.ERROR)
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), default)
-        .combine(genreFilterFlow) { (data, state), set ->
-            val filterData = data.filter { movie ->
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), defaultTriple)
+        .combine(genreFilterFlow) { triple, set -> triple to set }
+        .scan(default) { (oldResults, _), (dataWithState, set) ->
+            val (page, newResults, state) = dataWithState
+            val filterResults = newResults.filter { movie ->
                 set.isEmpty() || movie.genreIds?.any { id -> set.contains(id) } == true
             }
-            DataWithState(filterData, state)
+            val results = if (page == 1) filterResults else oldResults + filterResults
+            DataWithState(results, state)
         }
         .flowOn(Dispatchers.Default)
 
@@ -78,7 +76,7 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     }
 
     fun search(word: String) {
-        _finalResultFlow.value = DataWithState(emptyList(), SearchResultState.LOADING)
+        _finalResultFlow.value = emptyLoading
         _searchWordFlow.value = word
         _pageStateFlow.value = 1
     }
