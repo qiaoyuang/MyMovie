@@ -18,8 +18,8 @@ internal class MovieRepositoryImpl(private val service: APIService) : MovieRepos
     override suspend fun fetchMovieGenre(): ApiMovieGenresResponse =
         service.fetchMovieGenre()
 
-    override suspend fun search(word: String): ApiMovieResponse =
-        service search word
+    override suspend fun search(word: String, page: Int): ApiMovieResponse =
+        service.search(word, page)
 
     @Volatile
     private var movieGenreList: List<MovieGenre>? = null

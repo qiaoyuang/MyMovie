@@ -13,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,6 +21,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.basicui.commonBlueTextColor
@@ -39,7 +39,6 @@ import mymovie.composeapp.generated.resources.view_all
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
-import kotlinx.coroutines.Dispatchers
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +82,7 @@ internal fun Detail(
         LaunchedEffect(Unit) {
             detailViewModel.updateUI()
         }
-        when (val detailState = detailViewModel.movieDetailState.collectAsState(Dispatchers.Main).value) {
+        when (val detailState = detailViewModel.movieDetailState.collectAsStateWithLifecycle().value) {
             MovieDetailState.LOADING -> Loading()
             MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
             is MovieDetailState.SUCCESS -> {

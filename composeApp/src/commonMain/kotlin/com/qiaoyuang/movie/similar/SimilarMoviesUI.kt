@@ -21,7 +21,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -29,6 +28,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qiaoyuang.movie.basicui.EmptyData
 import com.qiaoyuang.movie.basicui.Error
 import com.qiaoyuang.movie.basicui.Loading
@@ -92,17 +92,16 @@ internal fun SimilarMovies(
         LaunchedEffect(Unit) {
             similarMoviesViewModel.getSimilarMovies()
         }
-        val scrollState = rememberLazyListState()
-        scrollState.OnBottomReached {
-            similarMoviesViewModel.getSimilarMovies()
-        }
-
-        val movieState by similarMoviesViewModel.movieState.collectAsState()
+        val movieState by similarMoviesViewModel.movieState.collectAsStateWithLifecycle()
         if (movieState.data.isEmpty()) when (movieState) {
             is LOADING -> Loading()
             is ERROR -> Error { similarMoviesViewModel.getSimilarMovies() }
             is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
         } else {
+            val scrollState = rememberLazyListState()
+            scrollState.OnBottomReached {
+                similarMoviesViewModel.getSimilarMovies()
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
                 state = scrollState,

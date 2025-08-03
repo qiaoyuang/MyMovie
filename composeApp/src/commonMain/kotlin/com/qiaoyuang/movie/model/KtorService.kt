@@ -22,8 +22,11 @@ internal class KtorService(private val client: HttpClient) : APIService {
     override suspend fun fetchMovieGenre(): ApiMovieGenresResponse =
         client.get("genre/movie/list").body()
 
-    override suspend fun search(word: String): ApiMovieResponse =
+    override suspend fun search(word: String, page: Int): ApiMovieResponse =
         client.get("search/movie") {
-            url.parameters.append("query", word)
+            with(url.parameters) {
+                append("query", word)
+                append("page", page.toString())
+            }
         }.body()
 }

@@ -21,11 +21,10 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.basicui.containerColor
-import kotlinx.coroutines.Dispatchers
-
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.ERROR
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
@@ -85,19 +84,19 @@ internal fun Home(
             homeViewModel.getTopMovies()
         }
 
-        val listState = rememberLazyListState()
-        listState.OnBottomReached {
-            homeViewModel.getTopMovies()
-        }
-        val movieState by homeViewModel.movieState.collectAsState(Dispatchers.Main)
+        val movieState by homeViewModel.movieState.collectAsStateWithLifecycle()
         if (movieState.data.isEmpty()) when (movieState) {
             is LOADING-> Loading()
             is ERROR -> Error { homeViewModel.getTopMovies() }
             is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
         } else {
+            val scrollState = rememberLazyListState()
+            scrollState.OnBottomReached {
+                homeViewModel.getTopMovies()
+            }
             LazyColumn(
                 modifier = Modifier.fillMaxWidth(),
-                state = listState,
+                state = scrollState,
             ) {
                 item {
                     Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
@@ -116,7 +115,7 @@ internal fun Home(
                 }
             }
             val strId = when (movieState) {
-                is SUCCESS if ((movieState as SUCCESS).isNoMore) -> Res.string.no_more_results
+                is SUCCESS if (movieState as SUCCESS).isNoMore-> Res.string.no_more_results
                 is ERROR -> Res.string.load_more_failed
                 else -> null
             }

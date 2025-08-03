@@ -9,37 +9,85 @@ import com.qiaoyuang.movie.model.MovieGenre
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.jvm.JvmInline
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 internal class SearchViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    val searchWordFlow = MutableStateFlow("")
+    sealed interface SearchResultState {
+
+        data object LOADING : SearchResultState
+
+        @JvmInline
+        value class SUCCESS(val isNoMore: Boolean = false) : SearchResultState
+
+        data object ERROR : SearchResultState
+    }
+
+    typealias DataWithState = Pair<List<ApiMovie>, SearchResultState>
+
+    private val default = DataWithState(emptyList(), SearchResultState.SUCCESS())
+
+    private val _searchWordFlow = MutableStateFlow("")
+    val searchWordFlow: StateFlow<String> = _searchWordFlow
+
+    private val _pageStateFlow = MutableStateFlow(1)
 
     private val selectedGenres = HashSet<Int>()
     private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
 
-    suspend fun init() = genreFilterFlow.emit(selectedGenres)
+    private val _finalResultFlow = MutableStateFlow<DataWithState>(default)
+    val finalResultFlow: StateFlow<DataWithState> = _finalResultFlow
 
     @OptIn(FlowPreview::class)
-    val finalResultFlow = searchWordFlow
+    private val combinedFlow = _searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
-        .combine(genreFilterFlow) { word, set ->
-            if (word.isEmpty()) {
-                SearchResultState.EMPTY
-            } else try {
-                SearchResultState.SUCCESS(
-                    value = repository.search(word).results.filter { movie ->
-                        set.isEmpty() || movie.genreIds?.any { id -> set.contains(id) } == true
-                    }
-                )
+        .combine(_pageStateFlow) { word, page -> word to page }
+        .scan(default) { (currentResults, state), (word, page) ->
+            if (word.isBlank())
+                default
+            else try {
+                val (_, results, totalPages, _) = repository.search(word, page)
+                val newResults = if (page == 1)
+                    results
+                else
+                    currentResults + results
+                DataWithState(newResults, SearchResultState.SUCCESS(page == totalPages))
             } catch (e: Exception) {
                 e.printStackTrace()
-                SearchResultState.ERROR
+                val newResults = if (page == 1)
+                    emptyList()
+                else
+                    currentResults
+                DataWithState(newResults, SearchResultState.ERROR)
             }
         }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), default)
+        .combine(genreFilterFlow) { (data, state), set ->
+            val filterData = data.filter { movie ->
+                set.isEmpty() || movie.genreIds?.any { id -> set.contains(id) } == true
+            }
+            DataWithState(filterData, state)
+        }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), SearchResultState.EMPTY)
+
+    suspend fun init() {
+        genreFilterFlow.emit(selectedGenres)
+        combinedFlow.collect { _finalResultFlow.value = it }
+    }
+
+    fun search(word: String) {
+        _finalResultFlow.value = DataWithState(emptyList(), SearchResultState.LOADING)
+        _searchWordFlow.value = word
+        _pageStateFlow.value = 1
+    }
+
+    fun loadMore() {
+        val (results, _) = finalResultFlow.value
+        _finalResultFlow.value = DataWithState(results, SearchResultState.LOADING)
+        _pageStateFlow.value++
+    }
 
     data class ShowGenre(
         val genre: MovieGenre,
@@ -65,11 +113,5 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
             selectedGenres.remove(genre.genre.id)
         }
         genreFilterFlow.emit(selectedGenres)
-    }
-
-    sealed interface SearchResultState {
-        data object EMPTY : SearchResultState
-        data class SUCCESS(val value: List<ApiMovie>) : SearchResultState
-        data object ERROR : SearchResultState
     }
 }

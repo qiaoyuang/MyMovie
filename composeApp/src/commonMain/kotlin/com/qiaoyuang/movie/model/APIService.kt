@@ -23,5 +23,5 @@ internal interface APIService {
 
     suspend fun fetchMovieGenre(): ApiMovieGenresResponse
 
-    suspend infix fun search(word: String): ApiMovieResponse
+    suspend fun search(word: String, page: Int): ApiMovieResponse
 }
