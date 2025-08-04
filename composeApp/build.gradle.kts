@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlinx.serialization)
+    alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.kotlin.cocoapods)
 
     alias(libs.plugins.jetbrains.compose)

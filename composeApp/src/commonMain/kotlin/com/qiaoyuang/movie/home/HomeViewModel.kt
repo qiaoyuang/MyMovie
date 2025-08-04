@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.concurrent.Volatile
 import kotlin.jvm.JvmInline
 
 internal class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
@@ -16,25 +16,23 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
     private val _movieState = MutableStateFlow<TopMoviesState>(TopMoviesState.SUCCESS(emptyList(), false))
     val movieState: StateFlow<TopMoviesState> = _movieState
 
-    @Volatile
-    private var currentPage = 1
+    private val currentPage = atomic(1)
 
-    @Volatile
-    private var pageLimit = Int.MAX_VALUE
+    private val pageLimit = atomic(Int.MAX_VALUE)
 
     fun getTopMovies() = viewModelScope.launch(Dispatchers.Default) {
         if (movieState.value is TopMoviesState.LOADING)
             return@launch
         val currentList = movieState.value.data
-        if (currentPage > pageLimit) {
+        if (currentPage.value > pageLimit.value) {
             _movieState.emit(TopMoviesState.SUCCESS(currentList, true))
             return@launch
         }
         _movieState.emit(TopMoviesState.LOADING(currentList))
         val state = try {
-            val newList = with(repository.fetchTopRated(currentPage)) {
-                currentPage = page + 1
-                pageLimit = totalPages
+            val newList = with(repository.fetchTopRated(currentPage.value)) {
+                currentPage.value = page + 1
+                pageLimit.value = totalPages
                 currentList + results
             }
             TopMoviesState.SUCCESS(newList, false)

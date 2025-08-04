@@ -4,11 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.concurrent.Volatile
 import kotlin.jvm.JvmInline
 
 internal class SimilarMoviesViewModel(
@@ -19,25 +19,23 @@ internal class SimilarMoviesViewModel(
     private val _movieState = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.SUCCESS(emptyList(), false))
     val movieState: StateFlow<SimilarMoviesState> = _movieState
 
-    @Volatile
-    private var currentPage = 1
+    private val currentPage = atomic(1)
 
-    @Volatile
-    private var pageLimit = Int.MAX_VALUE
+    private val pageLimit = atomic(Int.MAX_VALUE)
 
     fun getSimilarMovies() = viewModelScope.launch(Dispatchers.Default) {
         if (movieState.value is SimilarMoviesState.LOADING)
             return@launch
         val currentList = movieState.value.data
-        if (currentPage > pageLimit) {
+        if (currentPage.value > pageLimit.value) {
             _movieState.emit(SimilarMoviesState.SUCCESS(currentList, true))
             return@launch
         }
         _movieState.emit(SimilarMoviesState.LOADING(currentList))
         val state = try {
-            val list = with(repository.similarMovies(movieId, currentPage)) {
-                currentPage = page + 1
-                pageLimit = totalPages
+            val list = with(repository.similarMovies(movieId, currentPage.value)) {
+                currentPage.value = page + 1
+                pageLimit.value = totalPages
                 currentList + results
             }
             SimilarMoviesState.SUCCESS(list, false)

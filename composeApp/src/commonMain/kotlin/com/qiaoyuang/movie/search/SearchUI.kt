@@ -38,45 +38,49 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     LaunchedEffect(Unit) {
         searchViewModel.init()
     }
-    Column {
-        Spacer(modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars))
-        SearchCard()
-        val dataWithState by searchViewModel.finalResultFlow.collectAsStateWithLifecycle()
-        val (results, state) = dataWithState
-        if (results.isEmpty()) when (state) {
-            LOADING -> Loading()
-            ERROR -> EmptyData(stringResource(Res.string.network_problem))
-            is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
-        } else {
-            val scrollState = rememberLazyListState()
-            scrollState.OnBottomReached {
-                searchViewModel.loadMore()
-            }
-            LazyColumn(
-                modifier = fillMaxWidthModifier,
-                state = scrollState,
-            ) {
-                items(
-                    items = results,
-                    key = { it.id },
-                    itemContent = {
-                        MovieItem(it, navigateToDetail)
-                        HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
-                    },
-                )
-                if (state is LOADING) item {
-                    LoadingMore()
+    val snackbarHostState = remember { SnackbarHostState() }
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+    ) { paddingValues ->
+        Column(modifier = Modifier.padding(paddingValues)) {
+            SearchCard()
+            val dataWithState by searchViewModel.finalResultFlow.collectAsStateWithLifecycle()
+            val (results, state) = dataWithState
+            if (results.isEmpty()) when (state) {
+                LOADING -> Loading()
+                ERROR -> EmptyData(stringResource(Res.string.network_problem))
+                is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
+            } else {
+                val scrollState = rememberLazyListState()
+                scrollState.OnBottomReached {
+                    searchViewModel.loadMore()
                 }
-            }
-            val strId = when (state) {
-                is SUCCESS if state.isNoMore -> Res.string.no_more_results
-                is ERROR -> Res.string.load_more_failed
-                else -> null
-            }
-            strId?.let {
-                val snackBarMessage = stringResource(it)
-                LaunchedEffect(Unit) {
-                    // Todo
+                LazyColumn(
+                    modifier = fillMaxWidthModifier,
+                    state = scrollState,
+                ) {
+                    items(
+                        items = results,
+                        key = { it.id },
+                        itemContent = {
+                            MovieItem(it, navigateToDetail)
+                            HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
+                        },
+                    )
+                    if (state is LOADING) item {
+                        LoadingMore()
+                    }
+                }
+                val strId = when (state) {
+                    is SUCCESS if state.isNoMore -> Res.string.no_more_results
+                    is ERROR -> Res.string.load_more_failed
+                    else -> null
+                }
+                strId?.let {
+                    val snackBarMessage = stringResource(it)
+                    LaunchedEffect(Unit) {
+                        snackbarHostState.showSnackbar(message = snackBarMessage)
+                    }
                 }
             }
         }

@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieGenre
 import com.qiaoyuang.movie.model.MovieRepository
+import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.jvm.JvmInline
@@ -43,6 +44,8 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     private val _finalResultFlow = MutableStateFlow<DataWithState>(default)
     val finalResultFlow: StateFlow<DataWithState> = _finalResultFlow
 
+    private val pageLimit = atomic(Int.MAX_VALUE)
+
     @OptIn(FlowPreview::class)
     private val combinedFlow = _searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
@@ -51,6 +54,7 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
                 defaultTriple
             else try {
                 val (_, results, totalPages, _) = repository.search(word, page)
+                pageLimit.value = totalPages
                 Triple(page, results, SearchResultState.SUCCESS(page == totalPages))
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -82,6 +86,8 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     }
 
     fun loadMore() {
+        if (_pageStateFlow.value >= pageLimit.value)
+            return
         val (results, _) = finalResultFlow.value
         _finalResultFlow.value = DataWithState(results, SearchResultState.LOADING)
         _pageStateFlow.value++

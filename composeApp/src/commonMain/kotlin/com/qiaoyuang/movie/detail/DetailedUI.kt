@@ -5,8 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Icon
-// noinspection UsingMaterialAndMaterial3Libraries
-import androidx.compose.material.Scaffold
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -77,20 +76,22 @@ internal fun Detail(
                 scrollBehavior = scrollBehavior,
             )
         },
-    ) {
-        val detailViewModel = koinViewModel<DetailViewModel> { parametersOf(movieId) }
-        LaunchedEffect(Unit) {
-            detailViewModel.updateUI()
-        }
-        when (val detailState = detailViewModel.movieDetailState.collectAsStateWithLifecycle().value) {
-            MovieDetailState.LOADING -> Loading()
-            MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
-            is MovieDetailState.SUCCESS -> {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    MovieDetail(detailState.movie)
-                    Spacer(height24Modifier)
-                    detailState.similarMovies?.let {
-                        SimilarMovies(movieId,it, navigateToNextDetail, navigateToAllSimilarMovies)
+    ) { paddingValues ->
+        Column(Modifier.padding(paddingValues)) {
+            val detailViewModel = koinViewModel<DetailViewModel> { parametersOf(movieId) }
+            LaunchedEffect(Unit) {
+                detailViewModel.updateUI()
+            }
+            when (val detailState = detailViewModel.movieDetailState.collectAsStateWithLifecycle().value) {
+                MovieDetailState.LOADING -> Loading()
+                MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
+                is MovieDetailState.SUCCESS -> {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        MovieDetail(detailState.movie)
+                        Spacer(height24Modifier)
+                        detailState.similarMovies?.let {
+                            SimilarMovies(movieId,it, navigateToNextDetail, navigateToAllSimilarMovies)
+                        }
                     }
                 }
             }

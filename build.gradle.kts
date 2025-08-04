@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform) apply false
     alias(libs.plugins.kotlin.compose.compiler) apply false
     alias(libs.plugins.kotlinx.serialization) apply false
+    alias(libs.plugins.kotlinx.atomicfu) apply false
     alias(libs.plugins.kotlin.cocoapods) apply false
 
     alias(libs.plugins.jetbrains.compose) apply false
