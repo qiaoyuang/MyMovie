@@ -9,18 +9,19 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
 open class BasicTest {
 
+    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
+
     @BeforeTest
-    @OptIn(DelicateCoroutinesApi::class)
     open fun setUp() {
-        val mainThreadSurrogate = newSingleThreadContext("UI thread")
         Dispatchers.setMain(mainThreadSurrogate)
     }
 
     @AfterTest
     open fun testDown() {
+        mainThreadSurrogate.close()
         Dispatchers.resetMain()
     }
 }

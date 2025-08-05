@@ -76,7 +76,7 @@ internal class MockedRepository : MovieRepository {
         ),
     )
 
-    override suspend fun search(word: String): ApiMovieResponse = ApiMovieResponse(
+    override suspend fun search(word: String, page: Int): ApiMovieResponse = ApiMovieResponse(
         page = 1,
         results = generateMovies(TOTAL_RESULTS),
         totalPages = TOTAL_PAGES,
