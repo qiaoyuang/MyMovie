@@ -29,13 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.qiaoyuang.movie.basicui.EmptyData
-import com.qiaoyuang.movie.basicui.Error
-import com.qiaoyuang.movie.basicui.Loading
-import com.qiaoyuang.movie.basicui.LoadingMore
-import com.qiaoyuang.movie.basicui.OnBottomReached
-import com.qiaoyuang.movie.basicui.lightContentColor
-import com.qiaoyuang.movie.basicui.scrolledContainerColor
+import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.home.MovieItem
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.LOADING
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.SUCCESS
@@ -60,6 +54,7 @@ internal fun SimilarMovies(
     val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = backgroundColor,
         topBar = {
             TopAppBar(
                 title = {

@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -46,12 +47,15 @@ kotlin {
         framework {
             baseName = "ComposeApp"
             isStatic = true
+            transitiveExport
         }
         // Just for unit tests
-        pod(
+        /*pod(
             name = "MMKV",
             version = libs.versions.mmkv.origin.get(),
-        )
+        )*/
+        xcodeConfigurationToNativeBuildType["CUSTOM_DEBUG"] = NativeBuildType.DEBUG
+        xcodeConfigurationToNativeBuildType["CUSTOM_RELEASE"] = NativeBuildType.RELEASE
     }
 
     sourceSets {
@@ -125,6 +129,7 @@ kotlin {
 
 dependencies {
     add("kspCommonMainMetadata", libs.sqllin.processor)
+    debugImplementation(compose.uiTooling)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 }
 
@@ -165,8 +170,5 @@ android {
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
-    }
-    dependencies {
-        debugImplementation(compose.uiTooling)
     }
 }

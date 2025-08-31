@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
-internal val rattingStar: ImageVector by lazy {
+internal val rattingStar: ImageVector by lazy(LazyThreadSafetyMode.PUBLICATION) {
     ImageVector.Builder(
         name = "rattingStar",
         defaultWidth = 16.dp,
@@ -20,7 +20,7 @@ internal val rattingStar: ImageVector by lazy {
         path(
             fill = null,
             fillAlpha = 1.0f,
-            stroke = SolidColor(Color(0xFFFFFFFF)),
+            stroke = SolidColor(Color.Black),
             strokeAlpha = 1.0f,
             strokeLineWidth = 1.5f,
             strokeLineCap = StrokeCap.Round,
@@ -61,7 +61,7 @@ internal val rattingStar: ImageVector by lazy {
     }.build()
 }
 
-internal val rightArrow: ImageVector by lazy {
+internal val rightArrow: ImageVector by lazy(LazyThreadSafetyMode.PUBLICATION) {
     ImageVector.Builder(
         name = "rightArrow",
         defaultWidth = 20.dp,
@@ -101,7 +101,7 @@ internal val rightArrow: ImageVector by lazy {
     }.build()
 }
 
-internal val filter: ImageVector by lazy {
+internal val filter: ImageVector by lazy(LazyThreadSafetyMode.PUBLICATION) {
     ImageVector.Builder(
         name = "Filter",
         defaultWidth = 24.dp,
@@ -181,7 +181,7 @@ internal val filter: ImageVector by lazy {
     }.build()
 }
 
-internal val search: ImageVector by lazy {
+internal val search: ImageVector by lazy(LazyThreadSafetyMode.PUBLICATION) {
     ImageVector.Builder(
         name = "Search",
         defaultWidth = 24.dp,

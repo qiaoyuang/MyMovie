@@ -23,9 +23,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.qiaoyuang.movie.basicui.*
-import com.qiaoyuang.movie.basicui.commonBlueTextColor
-import com.qiaoyuang.movie.basicui.contentTextColor
-import com.qiaoyuang.movie.basicui.sectionTitleColor
 import com.qiaoyuang.movie.detail.DetailViewModel.MovieDetailState
 import com.qiaoyuang.movie.home.Ratting
 import com.qiaoyuang.movie.model.APIService
@@ -50,6 +47,7 @@ internal fun Detail(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior(rememberTopAppBarState())
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = backgroundColor,
         topBar = {
             TopAppBar(
                 title = {
@@ -107,7 +105,7 @@ private fun MovieDetail(movie: ApiMovie) {
             AsyncImage(
                 model = APIService buildImageUrl it,
                 contentDescription = null,
-                modifier = movieBackDropModifier,
+                modifier = getMovieBackDropModifier(),
             )
         }
         Spacer(height24Modifier)
@@ -159,9 +157,10 @@ private fun SimilarMovies(
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                 )
-                Image(
+                Icon(
                     imageVector = rightArrow,
                     modifier = size14Modifier,
+                    tint = commonBlueIconColor,
                     contentDescription = null,
                 )
             }
@@ -227,6 +226,7 @@ private val height24Modifier = Modifier.height(24.dp)
 private val containerModifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
 private val endPadding8Modifier = Modifier.padding(end = 8.dp)
 private val size14Modifier = Modifier.size(14.dp)
-private val movieBackDropModifier = Modifier.fillMaxWidth().aspectRatio(1.7777f).background(Color(0xFFFF4081))
+@Composable
+private fun getMovieBackDropModifier() = Modifier.fillMaxWidth().aspectRatio(1.7777f).background(backdropPlaceholderColor)
 private val height8Modifier = Modifier.height(8.dp)
 private val horizontal8PaddingModifier = Modifier.padding(horizontal = 4.dp)

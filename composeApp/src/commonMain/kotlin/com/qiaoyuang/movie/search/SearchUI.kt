@@ -1,6 +1,7 @@
 package com.qiaoyuang.movie.search
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qiaoyuang.movie.basicui.*
-import com.qiaoyuang.movie.basicui.hintTextColor
 import com.qiaoyuang.movie.home.MovieItem
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
@@ -40,6 +40,7 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     }
     val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
+        containerColor = backgroundColor,
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
@@ -95,7 +96,7 @@ internal fun SearchCard() {
             onClick = {},
             modifier = searchCardModifier,
             border = BorderStroke(1.dp, hintTextColor),
-            colors = CardDefaults.outlinedCardColors(containerColor = Color.White),
+            colors = CardDefaults.outlinedCardColors(containerColor = surfaceColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
             val searchWordFlow = searchViewModel.searchWordFlow
@@ -110,6 +111,7 @@ internal fun SearchCard() {
                     Icon(
                         imageVector = search,
                         contentDescription = null,
+                        tint = commonBlueIconColor,
                         modifier = size24Modifier
                     )
                 },
@@ -124,6 +126,7 @@ internal fun SearchCard() {
                         Icon(
                             imageVector = filter,
                             contentDescription = null,
+                            tint = commonBlueIconColor,
                             modifier = size24Modifier
                         )
                     }
@@ -133,6 +136,7 @@ internal fun SearchCard() {
                         onDismissRequest = {
                             openDropDownMenu = !openDropDownMenu
                         },
+                       modifier = Modifier.background(popWindowBackground)
                     ) {
                        genreList.forEach {
                            FilterItem(it)
@@ -141,11 +145,11 @@ internal fun SearchCard() {
                 },
                 singleLine = true,
                 colors = TextFieldDefaults.colors(
-                    focusedTextColor = hintTextColor,
-                    unfocusedTextColor = hintTextColor,
+                    focusedTextColor = onSurfaceColor,
+                    unfocusedTextColor = onSurfaceColor,
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
-                    cursorColor = hintTextColor,
+                    cursorColor = commonBlueIconColor,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
                     focusedLeadingIconColor = commonBlueIconColor,
@@ -184,6 +188,7 @@ private fun FilterItem(showGenre: SearchViewModel.ShowGenre) {
         Text(
             text = showGenre.genre.name,
             modifier = Modifier.padding(4.dp),
+            color = mainTitleColor,
             fontSize = 16.sp,
             lineHeight = 20.sp,
         )

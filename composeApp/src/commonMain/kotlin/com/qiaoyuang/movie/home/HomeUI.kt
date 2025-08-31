@@ -1,6 +1,5 @@
 package com.qiaoyuang.movie.home
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,6 +12,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.qiaoyuang.movie.basicui.*
-import com.qiaoyuang.movie.basicui.containerColor
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.ERROR
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
@@ -49,6 +50,7 @@ internal fun Home(
 
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = backgroundColor,
         topBar = {
             MediumTopAppBar(
                 title = {
@@ -59,6 +61,7 @@ internal fun Home(
                     )
                 },
                 actions = {
+                    ThemeSelectionButton()
                     IconButton(
                         onClick = navigateToSearch,
                     ) {
@@ -149,6 +152,7 @@ internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
         Column {
             Text(
                 text = data.title,
+                color = mainTitleColor,
                 fontSize = 22.sp,
                 lineHeight = 28.sp,
                 modifier = fillMaxWidthModifier,
@@ -156,6 +160,7 @@ internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
             Spacer(height4Modifier)
             Text(
                 text = data.overview,
+                color = contentTextColor,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
                 modifier = fillMaxWidthModifier,
@@ -166,10 +171,11 @@ internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
 
 @Composable
 internal fun Ratting(voteAverage: String?) {
-    Row(modifier = rattingModifier, verticalAlignment = Alignment.CenterVertically) {
-        Image(
+    Row(modifier = getRattingModifier(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
             imageVector = rattingStar,
             modifier = size12Modifier,
+            tint = lightContentColor,
             contentDescription = null,
         )
         Spacer(width6Modifier)
@@ -182,10 +188,94 @@ internal fun Ratting(voteAverage: String?) {
     }
 }
 
+@Composable
+private fun ThemeSelectionButton() {
+    var showDropDown by remember { mutableStateOf(false) }
+    Box {
+        IconButton(
+            onClick = { showDropDown = true }
+        ) {
+            Icon(
+                imageVector = when (MovieTheme.themeMode) {
+                    ThemeMode.LIGHT -> Icons.Outlined.LightMode
+                    ThemeMode.DARK -> Icons.Outlined.DarkMode
+                    ThemeMode.FOLLOW_SYSTEM -> Icons.Outlined.Palette
+                },
+                contentDescription = "Theme selection",
+            )
+        }
+        
+        DropdownMenu(
+            expanded = showDropDown,
+            onDismissRequest = { showDropDown = false },
+            modifier = Modifier.background(popWindowBackground),
+        ) {
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "Light",
+                        color = mainTitleColor,
+                    )
+                },
+                onClick = {
+                    MovieTheme.setThemeMode(ThemeMode.LIGHT)
+                    showDropDown = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.LightMode,
+                        contentDescription = null,
+                        tint = commonBlueIconColor,
+                    )
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "Dark",
+                        color = mainTitleColor,
+                    )
+                },
+                onClick = {
+                    MovieTheme.setThemeMode(ThemeMode.DARK)
+                    showDropDown = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.DarkMode,
+                        contentDescription = null,
+                        tint = commonBlueIconColor,
+                    )
+                }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = "Follow System",
+                        color = mainTitleColor,
+                    )
+                },
+                onClick = {
+                    MovieTheme.setThemeMode(ThemeMode.FOLLOW_SYSTEM)
+                    showDropDown = false
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Palette,
+                        contentDescription = null,
+                        tint = commonBlueIconColor,
+                    )
+                }
+            )
+        }
+    }
+}
+
 private val padding16Modifier = Modifier.padding(16.dp)
 private val asyncImageModifier = Modifier.width(92.dp).height(134.dp)
-private val rattingModifier = Modifier
-    .background(color = mainTitleColor, shape = RoundedCornerShape(4.dp))
+@Composable
+private fun getRattingModifier() = Modifier
+    .background(color = ratingBackgroundColor, shape = RoundedCornerShape(4.dp))
     .padding(6.dp)
 private val size12Modifier = Modifier.size(12.dp)
 private val width6Modifier = Modifier.width(6.dp)
