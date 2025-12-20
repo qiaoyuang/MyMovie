@@ -1,5 +1,8 @@
+@file:OptIn(KoinExperimentalAPI::class)
 package com.qiaoyuang.movie
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,81 +11,105 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import androidx.navigation.toRoute
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.NavDisplay
 import com.qiaoyuang.movie.basicui.MovieTheme
 import com.qiaoyuang.movie.basicui.backgroundColor
 import com.qiaoyuang.movie.detail.Detail
 import com.qiaoyuang.movie.home.Home
-import com.qiaoyuang.movie.model.GlobalKoinApplicationConfig
+import com.qiaoyuang.movie.model.GlobalKoinConfiguration
+import com.qiaoyuang.movie.model.navigationWithLifecycle
 import com.qiaoyuang.movie.search.Search
 import com.qiaoyuang.movie.similar.SimilarMovies
 import org.koin.compose.KoinApplication
+import org.koin.compose.koinInject
+import org.koin.compose.navigation3.koinEntryProvider
+import org.koin.core.annotation.KoinExperimentalAPI
+import org.koin.dsl.module
 
 @Composable
 fun App() {
-    KoinApplication(GlobalKoinApplicationConfig) {
+    KoinApplication(GlobalKoinConfiguration) {
         MovieTheme {
             MaterialTheme {
-                val navController = rememberNavController()
-                NavHost(
+                val backStack = koinInject<SnapshotStateList<NavKey>>()
+                NavDisplay(
+                    backStack = backStack,
                     modifier = Modifier.background(backgroundColor),
-                    navController = navController,
-                    startDestination = Homepage,
-                ) {
-                    composable<Homepage>(
-                        exitTransition = { scaleOut() + fadeOut() },
-                        popEnterTransition = { scaleIn() + fadeIn() },
-                    ) {
-                        Home(
-                            navigateToDetail = { movieId -> navController.navigate(DetailedPage(movieId)) },
-                            navigateToSearch = { navController.navigate(SearchPage) }
-                        )
-                    }
-                    composable<DetailedPage>(
-                        enterTransition = { slideInHorizontally { weight -> weight } },
-                        exitTransition = { scaleOut() + fadeOut() },
-                        popEnterTransition = { scaleIn() + fadeIn() },
-                        popExitTransition = { slideOutHorizontally { weight -> weight } },
-                    ) { backStackEntry ->
-                        val id = backStackEntry.toRoute<DetailedPage>().movieId
-                        Detail(
-                            movieId = id,
-                            navigateToNextDetail = { movieId -> navController.navigate(DetailedPage(movieId)) },
-                            navigateToAllSimilarMovies = { movieId -> navController.navigate(SimilarMoviesPage(movieId)) },
-                            goBack = { navController.popBackStack() }
-                        )
-                    }
-                    composable<SearchPage>(
-                        enterTransition = { expandVertically() },
-                        exitTransition = { scaleOut() + fadeOut() },
-                        popEnterTransition = { scaleIn() + fadeIn() },
-                        popExitTransition = { shrinkVertically() },
-                    ) {
-                        Search { movieId -> navController.navigate(DetailedPage(movieId)) }
-                    }
-
-                    composable<SimilarMoviesPage>(
-                        enterTransition = { slideInHorizontally { weight -> weight } },
-                        exitTransition = { scaleOut() + fadeOut() },
-                        popEnterTransition = { scaleIn() + fadeIn() },
-                        popExitTransition = { slideOutHorizontally { weight -> weight } },
-                    ) { backStackEntry ->
-                        val id = backStackEntry.toRoute<SimilarMoviesPage>().movieId
-                        SimilarMovies(
-                            movieId = id,
-                            navigateToDetail = { navController.navigate(DetailedPage(it)) },
-                            goBack = { navController.popBackStack() },
-                        )
-                    }
-                }
+                    onBack = { backStack.removeLastOrNull() },
+                    entryProvider = koinEntryProvider(),
+                )
             }
         }
+    }
+}
+
+val navigationModule = module {
+    single<SnapshotStateList<NavKey>> {
+        mutableStateListOf(Homepage)
+    }
+    navigationWithLifecycle<Homepage>(
+        metadata = NavDisplay.transitionSpec {
+            EnterTransition.None togetherWith scaleOut() + fadeOut()
+        } + NavDisplay.popTransitionSpec {
+            scaleIn() + fadeIn() togetherWith ExitTransition.None
+        } + NavDisplay.predictivePopTransitionSpec {
+            scaleIn() + fadeIn() togetherWith ExitTransition.None
+        }
+    ) {
+        Home(
+            navigateToDetail = { movieId -> get<SnapshotStateList<NavKey>>().add(DetailedPage(movieId)) },
+            navigateToSearch = { get<SnapshotStateList<NavKey>>().add(SearchPage) }
+        )
+    }
+    navigationWithLifecycle<DetailedPage>(
+        metadata = NavDisplay.transitionSpec {
+            slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
+        } + NavDisplay.popTransitionSpec {
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
+        } + NavDisplay.predictivePopTransitionSpec {
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
+        }
+    ) {
+        Detail(
+            movieId = it.movieId,
+            navigateToNextDetail = { movieId -> get<SnapshotStateList<NavKey>>().add(DetailedPage(movieId)) },
+            navigateToAllSimilarMovies = { movieId -> get<SnapshotStateList<NavKey>>().add(SimilarMoviesPage(movieId)) },
+            goBack = { get<SnapshotStateList<NavKey>>().removeLastOrNull() }
+        )
+    }
+    navigationWithLifecycle<SearchPage>(
+        metadata = NavDisplay.transitionSpec {
+            expandVertically() togetherWith scaleOut() + fadeOut()
+        } + NavDisplay.popTransitionSpec {
+            scaleIn() + fadeIn() togetherWith shrinkVertically()
+        } + NavDisplay.predictivePopTransitionSpec {
+            scaleIn() + fadeIn() togetherWith shrinkVertically()
+        }
+    ) {
+        Search(
+            navigateToDetail = { movieId -> get<SnapshotStateList<NavKey>>().add(DetailedPage(movieId)) }
+        )
+    }
+    navigationWithLifecycle<SimilarMoviesPage>(
+        metadata = NavDisplay.transitionSpec {
+            slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
+        } + NavDisplay.transitionSpec {
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
+        } + NavDisplay.predictivePopTransitionSpec {
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
+        }
+    ) { similarMoviesPage ->
+        SimilarMovies(
+            movieId = similarMoviesPage.movieId,
+            navigateToDetail = { get<SnapshotStateList<NavKey>>().add(DetailedPage(it)) },
+            goBack = { get<SnapshotStateList<NavKey>>().removeLastOrNull() },
+        )
     }
 }

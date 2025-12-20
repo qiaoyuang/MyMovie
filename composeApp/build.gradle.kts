@@ -78,7 +78,10 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel.savestate)
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.runtime.compose)
-            implementation(libs.androidx.navigation)
+
+            implementation(libs.androidx.navigation3.ui)
+            implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+            implementation(libs.androidx.material.adaptive.navigation3)
 
             implementation(libs.kotlinx.coroutines)
             implementation(libs.kotlinx.serialization.json)
@@ -94,7 +97,7 @@ kotlin {
             implementation(libs.koin.core)
             implementation(libs.koin.compose)
             implementation(libs.koin.compose.viewmodel)
-            implementation(libs.koin.compose.viewmodel.navigation)
+            implementation(libs.koin.compose.navigation3)
 
             implementation(libs.mmkv.kotlin)
 
