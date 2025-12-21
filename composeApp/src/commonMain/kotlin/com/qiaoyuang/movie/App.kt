@@ -17,14 +17,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.qiaoyuang.movie.basicui.MovieTheme
 import com.qiaoyuang.movie.basicui.backgroundColor
 import com.qiaoyuang.movie.detail.Detail
 import com.qiaoyuang.movie.home.Home
 import com.qiaoyuang.movie.model.GlobalKoinConfiguration
-import com.qiaoyuang.movie.model.navigationWithLifecycle
 import com.qiaoyuang.movie.search.Search
 import com.qiaoyuang.movie.similar.SimilarMovies
 import org.koin.compose.KoinApplication
@@ -32,6 +33,7 @@ import org.koin.compose.koinInject
 import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.module
+import org.koin.dsl.navigation3.navigation
 
 @Composable
 fun App() {
@@ -43,6 +45,10 @@ fun App() {
                     backStack = backStack,
                     modifier = Modifier.background(backgroundColor),
                     onBack = { backStack.removeLastOrNull() },
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
                     entryProvider = koinEntryProvider(),
                 )
             }
@@ -54,7 +60,7 @@ val navigationModule = module {
     single<SnapshotStateList<NavKey>> {
         mutableStateListOf(Homepage)
     }
-    navigationWithLifecycle<Homepage>(
+    navigation<Homepage>(
         metadata = NavDisplay.transitionSpec {
             EnterTransition.None togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
@@ -68,7 +74,7 @@ val navigationModule = module {
             navigateToSearch = { get<SnapshotStateList<NavKey>>().add(SearchPage) }
         )
     }
-    navigationWithLifecycle<DetailedPage>(
+    navigation<DetailedPage>(
         metadata = NavDisplay.transitionSpec {
             slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
@@ -84,7 +90,7 @@ val navigationModule = module {
             goBack = { get<SnapshotStateList<NavKey>>().removeLastOrNull() }
         )
     }
-    navigationWithLifecycle<SearchPage>(
+    navigation<SearchPage>(
         metadata = NavDisplay.transitionSpec {
             expandVertically() togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
@@ -97,7 +103,7 @@ val navigationModule = module {
             navigateToDetail = { movieId -> get<SnapshotStateList<NavKey>>().add(DetailedPage(movieId)) }
         )
     }
-    navigationWithLifecycle<SimilarMoviesPage>(
+    navigation<SimilarMoviesPage>(
         metadata = NavDisplay.transitionSpec {
             slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
         } + NavDisplay.transitionSpec {

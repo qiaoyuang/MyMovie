@@ -2,8 +2,12 @@ package com.qiaoyuang.movie.search
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.savedstate.SavedState
+import androidx.savedstate.read
+import androidx.savedstate.savedState
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieGenre
 import com.qiaoyuang.movie.model.MovieRepository
@@ -14,7 +18,17 @@ import kotlin.jvm.JvmInline
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
-internal class SearchViewModel(private val repository: MovieRepository) : ViewModel() {
+internal class SearchViewModel(
+    private val repository: MovieRepository,
+    private val savedStateHandle: SavedStateHandle
+) : ViewModel() {
+
+    private companion object {
+        const val FLOW_SEARCH_WORD = "flow_search_world"
+        const val FLOW_PAGE_STATE = "flow_page_state"
+        const val RESTORED_SAVED_STATE = "restored_saved_state"
+        const val RESTORED_SELECTED_GENRES = "restored_selected_genres"
+    }
 
     sealed interface SearchResultState {
 
@@ -33,10 +47,16 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
     private val emptyLoading = DataWithState(emptyList, SearchResultState.LOADING)
     private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
 
-    private val _searchWordFlow = MutableStateFlow("")
+    private val _searchWordFlow = savedStateHandle.getMutableStateFlow(
+        key = FLOW_SEARCH_WORD,
+        initialValue = "",
+    )
     val searchWordFlow: StateFlow<String> = _searchWordFlow
 
-    private val _pageStateFlow = MutableStateFlow(1)
+    private val _pageStateFlow = savedStateHandle.getMutableStateFlow(
+        key = FLOW_PAGE_STATE,
+        initialValue = 1,
+    )
 
     private val selectedGenres = HashSet<Int>()
     private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
@@ -73,6 +93,27 @@ internal class SearchViewModel(private val repository: MovieRepository) : ViewMo
             DataWithState(results, state)
         }
         .flowOn(Dispatchers.Default)
+
+    init {
+        restoreSelectedGenres()
+        savedStateHandle.setSavedStateProvider(RESTORED_SAVED_STATE) {
+            savedState {
+                putIntList(RESTORED_SELECTED_GENRES, selectedGenres.toList())
+            }
+        }
+    }
+
+    private fun restoreSelectedGenres() {
+        savedStateHandle
+            .get<SavedState>(RESTORED_SELECTED_GENRES)
+            ?.read {
+                getIntList(RESTORED_SELECTED_GENRES)
+                    .takeIf { it.isNotEmpty() }
+                    ?.let {
+                        selectedGenres.addAll(it)
+                    }
+            }
+    }
 
     suspend fun init() {
         genreFilterFlow.emit(selectedGenres)
