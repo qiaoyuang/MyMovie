@@ -99,7 +99,7 @@ fun MovieTheme(
     val colors = if (shouldUseDark) DarkColors else LightColors
     
     CompositionLocalProvider(
-        LocalMovieColors provides colors,
+        value = LocalMovieColors provides colors,
         content = content
     )
 }
