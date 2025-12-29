@@ -18,7 +18,7 @@ plugins {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xnested-type-aliases")
+        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xnested-type-aliases", "-Xexplicit-backing-fields")
     }
 
     androidTarget {

@@ -21,8 +21,8 @@ internal class DetailViewModel(
             DetailViewModel(MovieRepository, movieId) as T
     }*/
 
-    private val _movieDetailState = MutableStateFlow<MovieDetailState>(MovieDetailState.LOADING)
-    val movieDetailState: StateFlow<MovieDetailState> = _movieDetailState
+    val movieDetailState: StateFlow<MovieDetailState>
+        field = MutableStateFlow<MovieDetailState>(MovieDetailState.LOADING)
 
     private suspend fun fetchMovieDetail(): ApiMovie? = try {
         repository.movieDetail(movieId)
@@ -50,14 +50,14 @@ internal class DetailViewModel(
     }
 
     fun updateUI() = viewModelScope.launch(Dispatchers.Default) {
-        if (_movieDetailState.value == MovieDetailState.ERROR)
-            _movieDetailState.emit(MovieDetailState.LOADING)
+        if (movieDetailState.value == MovieDetailState.ERROR)
+            movieDetailState.emit(MovieDetailState.LOADING)
         val movieDetailDeferred = async { fetchMovieDetail() }
         val similarMovies = fetchSimilarMovieDetail()
         val state = movieDetailDeferred.await()?.let {
             MovieDetailState.SUCCESS(it, similarMovies)
         } ?: MovieDetailState.ERROR
-        _movieDetailState.emit(state)
+        movieDetailState.emit(state)
     }
 
     sealed interface MovieDetailState {

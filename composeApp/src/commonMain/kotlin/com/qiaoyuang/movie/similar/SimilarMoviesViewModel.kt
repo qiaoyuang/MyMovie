@@ -16,8 +16,8 @@ internal class SimilarMoviesViewModel(
     private val movieId: Long,
 ) : ViewModel() {
 
-    private val _movieState = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.SUCCESS(emptyList(), false))
-    val movieState: StateFlow<SimilarMoviesState> = _movieState
+    val movieState: StateFlow<SimilarMoviesState>
+        field = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.SUCCESS(emptyList(), false))
 
     private val currentPage = atomic(1)
 
@@ -28,10 +28,10 @@ internal class SimilarMoviesViewModel(
             return@launch
         val currentList = movieState.value.data
         if (currentPage.value > pageLimit.value) {
-            _movieState.emit(SimilarMoviesState.SUCCESS(currentList, true))
+            movieState.emit(SimilarMoviesState.SUCCESS(currentList, true))
             return@launch
         }
-        _movieState.emit(SimilarMoviesState.LOADING(currentList))
+        movieState.emit(SimilarMoviesState.LOADING(currentList))
         val state = try {
             val list = with(repository.similarMovies(movieId, currentPage.value)) {
                 currentPage.value = page + 1
@@ -43,7 +43,7 @@ internal class SimilarMoviesViewModel(
             e.printStackTrace()
             SimilarMoviesState.ERROR(currentList)
         }
-        _movieState.emit(state)
+        movieState.emit(state)
     }
 
     sealed interface SimilarMoviesState {

@@ -47,13 +47,13 @@ internal class SearchViewModel(
     private val emptyLoading = DataWithState(emptyList, SearchResultState.LOADING)
     private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
 
-    private val _searchWordFlow = savedStateHandle.getMutableStateFlow(
-        key = FLOW_SEARCH_WORD,
-        initialValue = "",
-    )
-    val searchWordFlow: StateFlow<String> = _searchWordFlow
+    val searchWordFlow: StateFlow<String>
+        field = savedStateHandle.getMutableStateFlow(
+            key = FLOW_SEARCH_WORD,
+            initialValue = "",
+        )
 
-    private val _pageStateFlow = savedStateHandle.getMutableStateFlow(
+    private val pageStateFlow = savedStateHandle.getMutableStateFlow(
         key = FLOW_PAGE_STATE,
         initialValue = 1,
     )
@@ -61,15 +61,15 @@ internal class SearchViewModel(
     private val selectedGenres = HashSet<Int>()
     private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
 
-    private val _finalResultFlow = MutableStateFlow<DataWithState>(default)
-    val finalResultFlow: StateFlow<DataWithState> = _finalResultFlow
+    val finalResultFlow: StateFlow<DataWithState>
+        field = MutableStateFlow<DataWithState>(default)
 
     private val pageLimit = atomic(Int.MAX_VALUE)
 
     @OptIn(FlowPreview::class)
-    private val combinedFlow = _searchWordFlow
+    private val combinedFlow = searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
-        .combine(_pageStateFlow) { word, page ->
+        .combine(pageStateFlow) { word, page ->
             if (word.isBlank())
                 defaultTriple
             else try {
@@ -117,21 +117,21 @@ internal class SearchViewModel(
 
     suspend fun init() {
         genreFilterFlow.emit(selectedGenres)
-        combinedFlow.collect { _finalResultFlow.value = it }
+        combinedFlow.collect { finalResultFlow.value = it }
     }
 
     fun search(word: String) {
-        _finalResultFlow.value = emptyLoading
-        _searchWordFlow.value = word
-        _pageStateFlow.value = 1
+        finalResultFlow.value = emptyLoading
+        searchWordFlow.value = word
+        pageStateFlow.value = 1
     }
 
     fun loadMore() {
-        if (_pageStateFlow.value >= pageLimit.value)
+        if (pageStateFlow.value >= pageLimit.value)
             return
         val (results, _) = finalResultFlow.value
-        _finalResultFlow.value = DataWithState(results, SearchResultState.LOADING)
-        _pageStateFlow.value++
+        finalResultFlow.value = DataWithState(results, SearchResultState.LOADING)
+        pageStateFlow.value++
     }
 
     data class ShowGenre(

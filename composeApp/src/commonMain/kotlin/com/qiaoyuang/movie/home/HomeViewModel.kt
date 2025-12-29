@@ -13,8 +13,8 @@ import kotlin.jvm.JvmInline
 
 internal class HomeViewModel(private val repository: MovieRepository) : ViewModel() {
 
-    private val _movieState = MutableStateFlow<TopMoviesState>(TopMoviesState.SUCCESS(emptyList(), false))
-    val movieState: StateFlow<TopMoviesState> = _movieState
+    val movieState: StateFlow<TopMoviesState>
+        field = MutableStateFlow<TopMoviesState>(TopMoviesState.SUCCESS(emptyList(), false))
 
     private val currentPage = atomic(1)
 
@@ -25,10 +25,10 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
             return@launch
         val currentList = movieState.value.data
         if (currentPage.value > pageLimit.value) {
-            _movieState.emit(TopMoviesState.SUCCESS(currentList, true))
+            movieState.emit(TopMoviesState.SUCCESS(currentList, true))
             return@launch
         }
-        _movieState.emit(TopMoviesState.LOADING(currentList))
+        movieState.emit(TopMoviesState.LOADING(currentList))
         val state = try {
             val newList = with(repository.fetchTopRated(currentPage.value)) {
                 currentPage.value = page + 1
@@ -40,7 +40,7 @@ internal class HomeViewModel(private val repository: MovieRepository) : ViewMode
             e.printStackTrace()
             TopMoviesState.ERROR(currentList)
         }
-        _movieState.emit(state)
+        movieState.emit(state)
     }
 
     sealed interface TopMoviesState {
