@@ -71,7 +71,7 @@ internal fun Home(
                         )
                     }
                 },
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = containerColor,
                     scrolledContainerColor = scrolledContainerColor,
                     titleContentColor = lightContentColor,

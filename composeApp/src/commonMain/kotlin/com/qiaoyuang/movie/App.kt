@@ -83,13 +83,7 @@ private fun NavBackStackScope(content: @Composable () -> Unit) {
 }
 
 val navigationModule = module {
-    navigation<Homepage>(
-        metadata = NavDisplay.popTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
-        } + NavDisplay.predictivePopTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
-        }
-    ) {
+    navigation<Homepage>{
         val backStack = LocalNavBackStack.current
         Home(
             navigateToDetail = { movieId -> backStack.add(DetailedPage(movieId)) },
@@ -98,11 +92,11 @@ val navigationModule = module {
     }
     navigation<DetailedPage>(
         metadata = NavDisplay.transitionSpec {
-            slideInHorizontally { weight -> weight } togetherWith slideOutHorizontally { weight -> weight }
+            slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
         } + NavDisplay.predictivePopTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
         }
     ) {
         val backStack = LocalNavBackStack.current
@@ -115,11 +109,11 @@ val navigationModule = module {
     }
     navigation<SearchPage>(
         metadata = NavDisplay.transitionSpec {
-            expandVertically() togetherWith shrinkVertically()
+            expandVertically() togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith shrinkVertically()
         } + NavDisplay.predictivePopTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith shrinkVertically()
         }
     ) {
         val backStack = LocalNavBackStack.current
@@ -129,11 +123,11 @@ val navigationModule = module {
     }
     navigation<SimilarMoviesPage>(
         metadata = NavDisplay.transitionSpec {
-            slideInHorizontally { weight -> weight } togetherWith slideOutHorizontally { weight -> weight }
+            slideInHorizontally { weight -> weight } togetherWith scaleOut() + fadeOut()
         } + NavDisplay.popTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
         } + NavDisplay.predictivePopTransitionSpec {
-            scaleIn() + fadeIn() togetherWith scaleOut() + fadeOut()
+            scaleIn() + fadeIn() togetherWith slideOutHorizontally { weight -> weight }
         }
     ) { similarMoviesPage ->
         val backStack = LocalNavBackStack.current

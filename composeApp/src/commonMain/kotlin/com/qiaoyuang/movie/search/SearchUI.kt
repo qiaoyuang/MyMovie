@@ -28,10 +28,8 @@ import mymovie.composeapp.generated.resources.network_problem
 import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.no_result
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
-@Preview
 @Composable
 internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     val searchViewModel = koinViewModel<SearchViewModel>()

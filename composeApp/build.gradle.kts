@@ -47,7 +47,7 @@ kotlin {
         framework {
             baseName = "ComposeApp"
             isStatic = true
-            transitiveExport
+            transitiveExport = true
         }
         // Just for unit tests
         /*pod(
