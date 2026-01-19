@@ -3,6 +3,7 @@ package com.qiaoyuang.movie.basicui
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,8 +81,9 @@ object MovieTheme {
     fun setThemeMode(mode: ThemeMode) {
         _themeMode = mode
     }
-    
+
     @Composable
+    @ReadOnlyComposable
     fun shouldUseDarkTheme(): Boolean {
         return when (themeMode) {
             ThemeMode.LIGHT -> false
@@ -105,65 +107,81 @@ fun MovieTheme(
 }
 
 @get:Composable
+@get:ReadOnlyComposable
 val colors: MovieColors
     get() = LocalMovieColors.current
 
 @get:Composable
+@get:ReadOnlyComposable
 val containerColor: Color
     get() = colors.containerColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val scrolledContainerColor: Color
     get() = colors.scrolledContainerColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val commonBlueTextColor: Color
     get() = colors.commonBlueTextColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val commonBlueIconColor: Color
     get() = colors.commonBlueIconColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val sectionTitleColor: Color
     get() = colors.sectionTitleColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val contentTextColor: Color
     get() = colors.contentTextColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val mainTitleColor: Color
     get() = colors.mainTitleColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val lightContentColor: Color
     get() = colors.lightContentColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val hintTextColor: Color
     get() = colors.hintTextColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val backgroundColor: Color
     get() = colors.backgroundColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val surfaceColor: Color
     get() = colors.surfaceColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val onSurfaceColor: Color
     get() = colors.onSurfaceColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val backdropPlaceholderColor: Color
     get() = colors.backdropPlaceholderColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val ratingBackgroundColor: Color
     get() = colors.ratingBackgroundColor
 
 @get:Composable
+@get:ReadOnlyComposable
 val popWindowBackground: Color
     get() = colors.popWindowBackground
