@@ -4,10 +4,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 data class MovieColors(
@@ -64,7 +64,7 @@ val DarkColors = MovieColors(
     popWindowBackground = Color(0xFF2D2D30),
 )
 
-val LocalMovieColors = compositionLocalOf { LightColors }
+val LocalMovieColors = staticCompositionLocalOf { LightColors }
 
 enum class ThemeMode {
     LIGHT,
