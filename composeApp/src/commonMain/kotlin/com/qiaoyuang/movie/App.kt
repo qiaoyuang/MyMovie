@@ -40,8 +40,8 @@ import org.koin.dsl.navigation3.navigation
 fun App() {
     KoinApplication(GlobalKoinConfiguration) {
         MovieTheme {
-            MaterialTheme {
-                NavBackStackScope {
+            NavBackStackScope {
+                MaterialTheme {
                     val backStack = LocalNavBackStack.current
                     NavDisplay(
                         backStack = backStack,
@@ -59,7 +59,7 @@ fun App() {
     }
 }
 
-val LocalNavBackStack = compositionLocalOf<NavBackStack<NavKey>> { NavBackStack(mutableStateListOf(Homepage)) }
+val LocalNavBackStack = staticCompositionLocalOf<NavBackStack<NavKey>> { NavBackStack(mutableStateListOf(Homepage)) }
 
 @Composable
 private fun NavBackStackScope(content: @Composable () -> Unit) {
