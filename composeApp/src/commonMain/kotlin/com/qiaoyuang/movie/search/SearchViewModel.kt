@@ -91,7 +91,7 @@ internal class SearchViewModel(
             if (page == 1)
                 fullData.clear()
             fullData.addAll(newResults)
-            val results = if (oldSet === set) {
+            val results = if (oldSet == set) {
                 val filterResults = if (set.isEmpty())
                     newResults
                 else newResults.filter { movie ->
