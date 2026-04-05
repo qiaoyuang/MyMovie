@@ -33,9 +33,6 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     val searchViewModel = koinViewModel<SearchViewModel>()
-    LaunchedEffect(Unit) {
-        searchViewModel.init()
-    }
     val snackbarHostState = remember { SnackbarHostState() }
     Scaffold(
         containerColor = backgroundColor,

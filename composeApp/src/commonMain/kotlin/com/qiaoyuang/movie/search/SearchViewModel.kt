@@ -20,11 +20,11 @@ import kotlin.time.toDuration
 
 internal class SearchViewModel(
     private val repository: MovieRepository,
-    private val savedStateHandle: SavedStateHandle
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private companion object {
-        const val FLOW_SEARCH_WORD = "flow_search_world"
+        const val FLOW_SEARCH_WORD = "flow_search_word"
         const val FLOW_PAGE_STATE = "flow_page_state"
         const val RESTORED_SAVED_STATE = "restored_saved_state"
         const val RESTORED_SELECTED_GENRES = "restored_selected_genres"
@@ -44,7 +44,6 @@ internal class SearchViewModel(
 
     private val emptyList = emptyList<ApiMovie>()
     private val default = DataWithState(emptyList, SearchResultState.SUCCESS())
-    private val emptyLoading = DataWithState(emptyList, SearchResultState.LOADING)
     private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
 
     val searchWordFlow: StateFlow<String>
@@ -59,40 +58,59 @@ internal class SearchViewModel(
     )
 
     private val selectedGenres = HashSet<Int>()
-    private val genreFilterFlow = MutableSharedFlow<Set<Int>>(replay = 1)
-
-    val finalResultFlow: StateFlow<DataWithState>
-        field = MutableStateFlow<DataWithState>(default)
+    private val genreFilterFlow = MutableStateFlow(selectedGenres.toSet())
 
     private val pageLimit = atomic(Int.MAX_VALUE)
 
-    @OptIn(FlowPreview::class)
-    private val combinedFlow = searchWordFlow
+    private val fullData = ArrayList<ApiMovie>()
+
+    @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
+    val finalResultFlow = searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
-        .combine(pageStateFlow) { word, page ->
-            if (word.isBlank())
-                defaultTriple
-            else try {
-                val (_, results, totalPages, _) = repository.search(word, page)
-                pageLimit.value = totalPages
-                Triple(page, results, SearchResultState.SUCCESS(page == totalPages))
-            } catch (e: Exception) {
-                e.printStackTrace()
-                Triple(page, emptyList, SearchResultState.ERROR)
+        .combine(pageStateFlow) { word, page -> word to page }
+        .flatMapLatest { (word, page) ->
+            flow {
+                emit(Triple(page, emptyList, SearchResultState.LOADING))
+                if (word.isBlank()) {
+                    emit(defaultTriple)
+                    return@flow
+                }
+                else try {
+                    val (_, results, totalPages, _) = repository.search(word, page)
+                    pageLimit.value = totalPages
+                    emit(Triple(page, results, SearchResultState.SUCCESS(page == totalPages)))
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    emit(Triple(page, emptyList, SearchResultState.ERROR))
+                }
             }
         }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000L), defaultTriple)
-        .combine(genreFilterFlow) { triple, set -> triple to set }
-        .scan(default) { (oldResults, _), (dataWithState, set) ->
-            val (page, newResults, state) = dataWithState
-            val filterResults = newResults.filter { movie ->
-                set.isEmpty() || movie.genreIds?.any { id -> set.contains(id) } == true
+        .combine(genreFilterFlow) { pageDataState, set -> pageDataState to set }
+        .scan(default) { (oldResults, oldSet), (pageDataState, set) ->
+            val (page, newResults, state) = pageDataState
+            if (page == 1)
+                fullData.clear()
+            fullData.addAll(newResults)
+            val results = if (oldSet === set) {
+                val filterResults = if (set.isEmpty())
+                    newResults
+                else newResults.filter { movie ->
+                    movie.genreIds?.any { id -> set.contains(id) } == true
+                }
+                if (page == 1) filterResults else oldResults + filterResults
+            } else {
+                if (set.isEmpty())
+                    fullData
+                else
+                    fullData.filter {
+                        movie -> movie.genreIds?.any { id -> set.contains(id) } == true
+                    }
             }
-            val results = if (page == 1) filterResults else oldResults + filterResults
             DataWithState(results, state)
         }
         .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), default)
+
 
     init {
         restoreSelectedGenres()
@@ -111,17 +129,12 @@ internal class SearchViewModel(
                     .takeIf { it.isNotEmpty() }
                     ?.let {
                         selectedGenres.addAll(it)
+                        genreFilterFlow.value = selectedGenres.toSet()
                     }
             }
     }
 
-    suspend fun init() {
-        genreFilterFlow.emit(selectedGenres)
-        combinedFlow.collect { finalResultFlow.value = it }
-    }
-
     fun search(word: String) {
-        finalResultFlow.value = emptyLoading
         searchWordFlow.value = word
         pageStateFlow.value = 1
     }
@@ -129,8 +142,6 @@ internal class SearchViewModel(
     fun loadMore() {
         if (pageStateFlow.value >= pageLimit.value)
             return
-        val (results, _) = finalResultFlow.value
-        finalResultFlow.value = DataWithState(results, SearchResultState.LOADING)
         pageStateFlow.value++
     }
 
@@ -157,6 +168,6 @@ internal class SearchViewModel(
         } else {
             selectedGenres.remove(genre.genre.id)
         }
-        genreFilterFlow.emit(selectedGenres)
+        genreFilterFlow.value = selectedGenres.toSet()
     }
 }

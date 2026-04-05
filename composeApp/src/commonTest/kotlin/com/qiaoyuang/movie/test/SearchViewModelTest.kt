@@ -1,7 +1,7 @@
 package com.qiaoyuang.movie.test
 
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.SavedStateHandle
 import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieGenre
 import com.qiaoyuang.movie.search.SearchViewModel
@@ -9,7 +9,6 @@ import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.produceIn
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,14 +16,7 @@ import kotlin.test.assertTrue
 
 class SearchViewModelTest : BasicTest() {
 
-    private val viewModel = SearchViewModel(MockedRepository())
-
-    override fun setUp() {
-        super.setUp()
-        viewModel.viewModelScope.launch {
-            viewModel.init()
-        }
-    }
+    private val viewModel = SearchViewModel(MockedRepository(), SavedStateHandle())
 
     @Test
     fun test_prepareGenreList() = runTest {
