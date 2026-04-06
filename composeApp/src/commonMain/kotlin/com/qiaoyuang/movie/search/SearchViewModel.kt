@@ -14,6 +14,8 @@ import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.jvm.JvmInline
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
@@ -41,6 +43,12 @@ internal class SearchViewModel(
     }
 
     typealias DataWithState = Pair<List<ApiMovie>, SearchResultState>
+
+    private data class ScanState(
+        val data: DataWithState,
+        val prevSet: Set<Int> = emptySet(),
+        val prevPageDataState: Triple<Int, List<ApiMovie>, SearchResultState>? = null,
+    )
 
     private val emptyList = emptyList<ApiMovie>()
     private val default = DataWithState(emptyList, SearchResultState.SUCCESS())
@@ -85,29 +93,37 @@ internal class SearchViewModel(
                 }
             }
         }
-        .combine(genreFilterFlow) { pageDataState, set -> pageDataState to set }
-        .scan(default) { (oldResults, oldSet), (pageDataState, set) ->
+        .combine(genreFilterFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
+        .scan(ScanState(default)) { acc, (pageDataState, set) ->
             val (page, newResults, state) = pageDataState
-            if (page == 1)
-                fullData.clear()
-            fullData.addAll(newResults)
-            val results = if (oldSet == set) {
-                val filterResults = if (set.isEmpty())
-                    newResults
-                else newResults.filter { movie ->
-                    movie.genreIds?.any { id -> set.contains(id) } == true
+            val pageDataChanged = pageDataState !== acc.prevPageDataState
+            if (pageDataChanged) {
+                if (page == 1)
+                    fullData.clear()
+                fullData.addAll(newResults)
+            }
+            val results = if (set == acc.prevSet) {
+                if (!pageDataChanged) {
+                    acc.data.first
+                } else {
+                    val filterResults = if (set.isEmpty())
+                        newResults
+                    else newResults.filter { movie ->
+                        movie.genreIds?.any { id -> set.contains(id) } == true
+                    }
+                    if (page == 1) filterResults else acc.data.first + filterResults
                 }
-                if (page == 1) filterResults else oldResults + filterResults
             } else {
                 if (set.isEmpty())
-                    fullData
+                    fullData.toList()
                 else
-                    fullData.filter {
-                        movie -> movie.genreIds?.any { id -> set.contains(id) } == true
+                    fullData.filter { movie ->
+                        movie.genreIds?.any { id -> set.contains(id) } == true
                     }
             }
-            DataWithState(results, state)
+            ScanState(DataWithState(results, state), set, pageDataState)
         }
+        .map { it.data }
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), default)
 
@@ -116,7 +132,7 @@ internal class SearchViewModel(
         restoreSelectedGenres()
         savedStateHandle.setSavedStateProvider(RESTORED_SAVED_STATE) {
             savedState {
-                putIntList(RESTORED_SELECTED_GENRES, selectedGenres.toList())
+                putIntList(RESTORED_SELECTED_GENRES, genreFilterFlow.value.toList())
             }
         }
     }
@@ -162,12 +178,16 @@ internal class SearchViewModel(
         }
     }
 
+    private val genreMutex = Mutex()
+
     fun selectGenre(genre: ShowGenre) = viewModelScope.launch(Dispatchers.Default) {
-        if (genre.isSelected.value) {
-            selectedGenres.add(genre.genre.id)
-        } else {
-            selectedGenres.remove(genre.genre.id)
+        genreMutex.withLock {
+            if (genre.isSelected.value) {
+                selectedGenres.add(genre.genre.id)
+            } else {
+                selectedGenres.remove(genre.genre.id)
+            }
+            genreFilterFlow.value = selectedGenres.toSet()
         }
-        genreFilterFlow.value = selectedGenres.toSet()
     }
 }
