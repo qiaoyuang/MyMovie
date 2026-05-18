@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.NativeBuildType
 
 plugins {
@@ -12,18 +10,21 @@ plugins {
     alias(libs.plugins.jetbrains.compose)
     alias(libs.plugins.ksp)
 
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
     // alias(libs.plugins.mockative)
 }
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xnested-type-aliases", "-Xexplicit-backing-fields")
+        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xexplicit-backing-fields")
     }
 
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_17)
+    android {
+        namespace = "com.qiaoyuang.movie.shared"
+        compileSdk = libs.versions.android.compileSdk.get().toInt()
+        minSdk = libs.versions.android.minSdk.get().toInt()
+        withHostTest {
+            isIncludeAndroidResources = true
         }
     }
 
@@ -41,8 +42,7 @@ kotlin {
         homepage = "https://github.com/qiaoyuang/MyMovie"
         name = "ComposeApp"
         version = "1.0"
-        ios.deploymentTarget = "17.0"
-        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        ios.deploymentTarget = "26.0"
         framework {
             baseName = "ComposeApp"
             isStatic = true
@@ -131,46 +131,5 @@ kotlin {
 
 dependencies {
     add("kspCommonMainMetadata", libs.sqllin.processor)
-    debugImplementation(libs.compose.ui.tooling)
-    coreLibraryDesugaring(libs.desugar.jdk.libs)
-}
-
-android {
-    namespace = "com.qiaoyuang.movie"
-    compileSdk = libs.versions.android.compileSdk.get().toInt()
-
-    sourceSets["main"].manifest.srcFile("src/androidMain/AndroidManifest.xml")
-    sourceSets["main"].res.srcDirs("src/androidMain/res")
-    sourceSets["main"].resources.srcDirs("src/commonMain/resources")
-
-    /*androidResources {
-        generateLocaleConfig = true
-    }*/
-    defaultConfig {
-        applicationId = "com.qiaoyuang.movie"
-        minSdk = libs.versions.android.minSdk.get().toInt()
-        targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false
-        }
-    }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    buildFeatures {
-        compose = true
-    }
-    compileOptions {
-        isCoreLibraryDesugaringEnabled = true
-    }
+    androidRuntimeClasspath(libs.compose.ui.tooling)
 }
