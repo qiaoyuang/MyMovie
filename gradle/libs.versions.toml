@@ -3,7 +3,7 @@
 junit = "4.13.2"
 kotlin = "2.3.21"
 ksp = "2.3.7"
-agp = "9.2.1"
+agp = "9.0.1"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "37"
