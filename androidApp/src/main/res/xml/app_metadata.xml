@@ -1,0 +1,13 @@
+<AppFunctionAppMetadata xmlns:appfn="http://schemas.android.com/apk/androidx.appfunctions"
+    appfn:description="MyMovie provides functions for discovering movies from TMDB (The Movie Database).
+
+    Operational Patterns:
+    - Call searchMovies or getTopRatedMovies first to obtain valid movieId values.
+    - Use the returned movieId with getMovieDetails to retrieve full details for a specific title.
+    - Use the returned movieId with getSimilarMovies to explore related titles.
+    - Increment the page parameter to paginate through large result sets; pages start at 1.
+
+    Constraints:
+    - movieId values are TMDB identifiers valid only within this app's functions.
+    - All functions require network access; results depend on TMDB API availability."
+    appfn:displayDescription="@string/app_name" />

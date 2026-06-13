@@ -1,18 +1,17 @@
 package com.qiaoyuang.movie.test
 
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.newSingleThreadContext
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 
-@OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 open class BasicTest {
 
-    private val mainThreadSurrogate = newSingleThreadContext("UI thread")
+    private val mainThreadSurrogate = StandardTestDispatcher()
 
     @BeforeTest
     open fun setUp() {
@@ -21,7 +20,6 @@ open class BasicTest {
 
     @AfterTest
     open fun testDown() {
-        mainThreadSurrogate.close()
         Dispatchers.resetMain()
     }
 }

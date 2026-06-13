@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose.compiler)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -46,10 +47,17 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
+ksp {
+    arg("appfunctions:aggregateAppFunctions", "true")
+}
+
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
     implementation(libs.mmkv.kotlin)
+    implementation(libs.androidx.appfunctions)
+    implementation(libs.androidx.appfunctions.service)
+    ksp(libs.androidx.appfunctions.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(libs.compose.ui.tooling)
 }
