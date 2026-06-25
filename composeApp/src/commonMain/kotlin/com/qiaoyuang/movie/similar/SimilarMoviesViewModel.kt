@@ -6,9 +6,10 @@ import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
-import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.Dispatchers
+import com.qiaoyuang.movie.model.ui.UIEvent
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -18,44 +19,57 @@ internal class SimilarMoviesViewModel(
 ) : ViewModel() {
 
     val movieState: StateFlow<SimilarMoviesState>
-        field = MutableStateFlow<SimilarMoviesState>(SimilarMoviesState.SUCCESS(emptyList(), false))
+        field = MutableStateFlow(
+            value = SimilarMoviesState(
+                data = emptyList(),
+                isNoMore = false,
+                isLoading = false,
+                isError = false,
+            )
+        )
 
-    private val currentPage = atomic(1)
+    val uiEventFlow: SharedFlow<UIEvent>
+        field = MutableSharedFlow()
 
-    private val pageLimit = atomic(Int.MAX_VALUE)
+    private var currentPage = 1
+    private var pageLimit = Int.MAX_VALUE
 
-    fun getSimilarMovies() = viewModelScope.launch(Dispatchers.Default) {
-        if (movieState.value is SimilarMoviesState.LOADING)
+    fun getSimilarMovies() = viewModelScope.launch {
+        if (movieState.value.isLoading)
             return@launch
-        val currentList = movieState.value.data
-        if (currentPage.value > pageLimit.value) {
-            movieState.emit(SimilarMoviesState.SUCCESS(currentList, true))
+        val oldState = movieState.value
+        if (currentPage > pageLimit) {
+            movieState.value = oldState.copy(isNoMore = true)
+            uiEventFlow.emit(UIEvent.CommonNoMoreToast)
             return@launch
         }
-        movieState.emit(SimilarMoviesState.LOADING(currentList))
+        movieState.value = oldState.copy(isLoading = true, isError = false)
 
-        val state = when (val result = repository.similarMovies(movieId, currentPage.value)) {
+        when (val result = repository.similarMovies(movieId, currentPage)) {
             is Result.Success<MovieResponse> -> {
+                val currentList = oldState.data
                 val list = with(result.data) {
-                    currentPage.value = page + 1
-                    pageLimit.value = totalPages
+                    currentPage = page + 1
+                    pageLimit = totalPages
                     currentList + results
                 }
-                SimilarMoviesState.SUCCESS(list, false)
+                movieState.value = oldState.copy(
+                    data = list,
+                    isLoading = false,
+                    isError = false,
+                )
             }
-            is Result.Error<String> -> SimilarMoviesState.ERROR(currentList)
+            is Result.Error<String> -> {
+                movieState.value = oldState.copy(isLoading = false, isError = true)
+                uiEventFlow.emit(UIEvent.CommonErrorToast)
+            }
         }
-        movieState.emit(state)
     }
 
-    sealed interface SimilarMoviesState {
-
-        val data: List<Movie>
-
-        data class LOADING(override val data: List<Movie>) : SimilarMoviesState
-
-        data class SUCCESS(override val data: List<Movie>, val isNoMore: Boolean) : SimilarMoviesState
-
-        data class ERROR(override val data: List<Movie>) : SimilarMoviesState
-    }
+    data class SimilarMoviesState(
+        val data: List<Movie>,
+        val isNoMore: Boolean,
+        val isLoading: Boolean,
+        val isError: Boolean,
+    )
 }

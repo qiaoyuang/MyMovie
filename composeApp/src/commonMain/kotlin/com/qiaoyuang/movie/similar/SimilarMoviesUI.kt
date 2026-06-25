@@ -31,12 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.home.MovieItem
-import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.LOADING
-import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.SUCCESS
-import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.ERROR
 import mymovie.composeapp.generated.resources.Res
-import mymovie.composeapp.generated.resources.load_more_failed
-import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.no_result
 import mymovie.composeapp.generated.resources.similar_movies
 import org.jetbrains.compose.resources.stringResource
@@ -89,10 +84,10 @@ internal fun SimilarMovies(
                 similarMoviesViewModel.getSimilarMovies()
             }
             val movieState by similarMoviesViewModel.movieState.collectAsStateWithLifecycle()
-            if (movieState.data.isEmpty()) when (movieState) {
-                is LOADING -> Loading()
-                is ERROR -> Error { similarMoviesViewModel.getSimilarMovies() }
-                is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
+            if (movieState.data.isEmpty()) when {
+                movieState.isLoading -> Loading()
+                movieState.isError -> Error { similarMoviesViewModel.getSimilarMovies() }
+                else -> EmptyData(stringResource(Res.string.no_result))
             } else {
                 val scrollState = rememberLazyListState()
                 scrollState.OnBottomReached {
@@ -110,22 +105,15 @@ internal fun SimilarMovies(
                             HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
                         }
                     )
-                    if (movieState is LOADING) item {
+                    if (movieState.isLoading) item {
                         LoadingMore()
                     }
                 }
 
-                val strId = when (movieState) {
-                    is SUCCESS if ((movieState as SUCCESS).isNoMore) -> Res.string.no_more_results
-                    is ERROR -> Res.string.load_more_failed
-                    else -> null
-                }
-                strId?.let {
-                    val snackBarMessage = stringResource(it)
-                    LaunchedEffect(Unit) {
-                        snackbarHostState.showSnackbar(message = snackBarMessage)
-                    }
-                }
+                 CollectUiEventAndShowSnackBar(
+                     uiEventFlow = similarMoviesViewModel.uiEventFlow,
+                     snackbarHostState = snackbarHostState,
+                 )
             }
         }
     }

@@ -2,12 +2,11 @@ package com.qiaoyuang.movie.test
 
 import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
-import com.qiaoyuang.movie.model.dto.ApiMovieDTO
-import com.qiaoyuang.movie.model.dto.ApiMovieGenresResponseDTO
-import com.qiaoyuang.movie.model.dto.ApiMovieResponseDTO
-import com.qiaoyuang.movie.model.dto.MovieGenreDTO
 import com.qiaoyuang.movie.model.MovieRepository
-import kotlin.String
+import com.qiaoyuang.movie.model.Result
+import com.qiaoyuang.movie.model.domain.Movie
+import com.qiaoyuang.movie.model.domain.MovieGenre
+import com.qiaoyuang.movie.model.domain.MovieResponse
 
 internal class MockedRepository : MovieRepository {
 
@@ -18,7 +17,7 @@ internal class MockedRepository : MovieRepository {
         const val GENRE_SIZE = 3
     }
 
-    private fun generateMovie(id: Long): ApiMovieDTO = ApiMovieDTO(
+    private fun generateMovie(id: Long): Movie = Movie(
         id = id,
         title = ('a'.code + id.toInt()).toChar().toString(),
         overview = "abc",
@@ -29,59 +28,65 @@ internal class MockedRepository : MovieRepository {
     )
 
     private var point = 1L
-    private fun generateMovies(count: Int): List<ApiMovieDTO> = buildList {
+    private fun generateMovies(count: Int): List<Movie> = buildList {
         repeat(count) {
             add(generateMovie(point++))
         }
     }
 
-    override suspend fun getMovieGenreList(): List<MovieGenreDTO> = listOf(
-        MovieGenreDTO(1, "a"),
-        MovieGenreDTO(2, "b"),
-        MovieGenreDTO(3, "c")
+    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> = Result.Success(
+        listOf(
+            MovieGenre(1, "a"),
+            MovieGenre(2, "b"),
+            MovieGenre(3, "c"),
+        )
     )
 
-    override suspend fun getMovieGenreMap(): IntObjectMap<String> = getMovieGenreList().run {
-        val map = MutableIntObjectMap<String>(size)
-        forEach { (id, name) ->
-            map[id] = name
-        }
-        map
+    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> {
+        val genres = listOf(MovieGenre(1, "a"), MovieGenre(2, "b"), MovieGenre(3, "c"))
+        val map = MutableIntObjectMap<String>(genres.size)
+        genres.forEach { map[it.id] = it.name }
+        return Result.Success(map)
     }
 
-    override suspend fun fetchTopRated(page: Int): ApiMovieResponseDTO = ApiMovieResponseDTO(
-        page = page,
-        results = generateMovies(COUNT),
-        totalPages = TOTAL_PAGES,
-        totalResults = TOTAL_RESULTS,
+    override suspend fun fetchTopRated(page: Int): Result<MovieResponse, String> = Result.Success(
+        MovieResponse(
+            page = page,
+            results = generateMovies(COUNT),
+            totalPages = TOTAL_PAGES,
+        )
     )
 
-    override suspend fun movieDetail(movieId: Long): ApiMovieDTO = generateMovie(movieId)
+    override suspend fun movieDetail(movieId: Long): Result<Movie, String> =
+        Result.Success(generateMovie(movieId))
 
     override suspend fun similarMovies(
         movieId: Long,
-        page: Int
-    ): ApiMovieResponseDTO = ApiMovieResponseDTO(
-        page = page,
-        results = generateMovies(COUNT),
-        totalPages = TOTAL_PAGES,
-        totalResults = TOTAL_RESULTS,
+        page: Int,
+    ): Result<MovieResponse, String> = Result.Success(
+        MovieResponse(
+            page = page,
+            results = generateMovies(COUNT),
+            totalPages = TOTAL_PAGES,
+        )
     )
 
-    override suspend fun fetchMovieGenre(): ApiMovieGenresResponseDTO = ApiMovieGenresResponseDTO(
-        genres = listOf(
-            MovieGenreDTO(1, "a"),
-            MovieGenreDTO(2, "b"),
-            MovieGenreDTO(3, "c")
-        ),
+    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, String> = Result.Success(
+        listOf(
+            MovieGenre(1, "a"),
+            MovieGenre(2, "b"),
+            MovieGenre(3, "c"),
+        )
     )
 
-    override suspend fun search(word: String, page: Int): ApiMovieResponseDTO = ApiMovieResponseDTO(
-        page = 1,
-        results = generateMovies(TOTAL_RESULTS),
-        totalPages = TOTAL_PAGES,
-        totalResults = TOTAL_RESULTS,
-    )
+    override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
+        Result.Success(
+            MovieResponse(
+                page = 1,
+                results = generateMovies(TOTAL_RESULTS),
+                totalPages = TOTAL_PAGES,
+            )
+        )
 
     fun reset() {
         point = 1L
