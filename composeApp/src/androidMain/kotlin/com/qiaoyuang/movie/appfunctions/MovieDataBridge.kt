@@ -7,6 +7,8 @@ import com.qiaoyuang.movie.model.APIService.Companion.KEY
 import com.qiaoyuang.movie.model.KtorService
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.MovieRepositoryImpl
+import com.qiaoyuang.movie.model.Result
+import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.ktorEngine
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -52,12 +54,12 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
                     url.parameters.append(API_KEY_PARAM, KEY)
                 }
             }
-            return MovieDataBridge(MovieRepositoryImpl(KtorService(client)))
+            return MovieDataBridge(MovieRepositoryImpl(KtorService(client), Dispatchers.Default))
         }
     }
 
-    suspend fun searchMovies(query: String, page: Int): List<MovieData> = withContext(Dispatchers.IO) {
-        repository.search(query, page).results.map { movie ->
+    suspend fun searchMovies(query: String, page: Int): List<MovieData>? = withContext(Dispatchers.IO) {
+        (repository.search(query, page) as? Result.Success<MovieResponse>)?.data?.results?.map { movie ->
             MovieData(
                 id = movie.id,
                 title = movie.title,
@@ -68,8 +70,8 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
         }
     }
 
-    suspend fun getTopRatedMovies(page: Int): List<MovieData> = withContext(Dispatchers.IO) {
-        repository.fetchTopRated(page).results.map { movie ->
+    suspend fun getTopRatedMovies(page: Int): List<MovieData>? = withContext(Dispatchers.IO) {
+        (repository.fetchTopRated(page) as? Result.Success<MovieResponse>)?.data?.results?.map { movie ->
             MovieData(
                 id = movie.id,
                 title = movie.title,
@@ -80,8 +82,8 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
         }
     }
 
-    suspend fun getMovieDetails(movieId: Long): MovieData = withContext(Dispatchers.IO) {
-        repository.movieDetail(movieId).let { movie ->
+    suspend fun getSimilarMovies(movieId: Long, page: Int): List<MovieData>? =
+        (repository.similarMovies(movieId, page) as? Result.Success<MovieResponse>)?.data?.results?.map { movie ->
             MovieData(
                 id = movie.id,
                 title = movie.title,
@@ -90,17 +92,4 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
                 posterUrl = movie.posterPath?.let { APIService buildImageUrl it },
             )
         }
-    }
-
-    suspend fun getSimilarMovies(movieId: Long, page: Int): List<MovieData> = withContext(Dispatchers.IO) {
-        repository.similarMovies(movieId, page).results.map { movie ->
-            MovieData(
-                id = movie.id,
-                title = movie.title,
-                overview = movie.overview,
-                rating = movie.voteAverage,
-                posterUrl = movie.posterPath?.let { APIService buildImageUrl it },
-            )
-        }
-    }
 }

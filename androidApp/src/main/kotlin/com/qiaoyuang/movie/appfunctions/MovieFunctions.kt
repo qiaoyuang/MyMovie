@@ -32,7 +32,7 @@ class MovieFunctions private constructor() {
     suspend fun searchMovies(
         appFunctionContext: AppFunctionContext,
         movieName: String,
-    ): List<MovieInfo> = bridge.searchMovies(movieName, 1).map { it.toMovieInfo() }
+    ): List<MovieInfo> = bridge.searchMovies(movieName, 1)?.map { it.toMovieInfo() } ?: emptyList()
 
     /**
      * Retrieve the current list of top-rated movies.
@@ -44,7 +44,7 @@ class MovieFunctions private constructor() {
     @AppFunction(isDescribedByKDoc = true)
     suspend fun getTopRatedMovies(
         appFunctionContext: AppFunctionContext,
-    ): List<MovieInfo> = bridge.getTopRatedMovies(1).map { it.toMovieInfo() }
+    ): List<MovieInfo> = bridge.getTopRatedMovies(1)?.map { it.toMovieInfo() } ?: emptyList()
 
     /**
      * Find movies similar to a given title.
@@ -60,7 +60,7 @@ class MovieFunctions private constructor() {
     ): List<MovieInfo> = try {
         bridge
             .searchMovies(movieName, 1)
-            .find { it.title.equals(movieName, true) }
+            ?.find { it.title.equals(movieName, true) }
             ?.let {
                 bridge.getSimilarMovies(it.id, 1)
             }

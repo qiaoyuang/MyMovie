@@ -2,8 +2,8 @@ package com.qiaoyuang.movie.test
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
-import com.qiaoyuang.movie.model.ApiMovie
-import com.qiaoyuang.movie.model.MovieGenre
+import com.qiaoyuang.movie.model.dto.ApiMovieDTO
+import com.qiaoyuang.movie.model.dto.MovieGenreDTO
 import com.qiaoyuang.movie.search.SearchViewModel
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
@@ -27,7 +27,7 @@ class SearchViewModelTest : BasicTest() {
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     fun test_search() = runTest {
-        val emptyList = emptyList<ApiMovie>()
+        val emptyList = emptyList<ApiMovieDTO>()
 
         val channel = viewModel.finalResultFlow.produceIn(backgroundScope)
         assertEquals(emptyList to SUCCESS(), channel.receive())
@@ -44,7 +44,7 @@ class SearchViewModelTest : BasicTest() {
         println(data1.size)
 
         viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenre(1, "a"),
+            genre = MovieGenreDTO(1, "a"),
             isSelected = mutableStateOf(true),
         ))
         val (data2, state2) = channel.receive()
@@ -55,7 +55,7 @@ class SearchViewModelTest : BasicTest() {
         println(data2.size)
 
         viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenre(2, "b"),
+            genre = MovieGenreDTO(2, "b"),
             isSelected = mutableStateOf(true),
         ))
         val (data3, state3) = channel.receive()
@@ -66,7 +66,7 @@ class SearchViewModelTest : BasicTest() {
         println(data3.size)
 
         viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenre(2, "b"),
+            genre = MovieGenreDTO(2, "b"),
             isSelected = mutableStateOf(false),
         ))
         val (data4, state4) = channel.receive()

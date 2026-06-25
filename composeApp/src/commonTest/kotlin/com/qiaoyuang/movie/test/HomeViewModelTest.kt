@@ -1,5 +1,6 @@
 package com.qiaoyuang.movie.test
 
+import app.cash.turbine.test
 import com.qiaoyuang.movie.home.HomeViewModel
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,14 +13,20 @@ class HomeViewModelTest : BasicTest() {
 
     @Test
     fun test_getMovies() = runTest {
-        val viewModel = HomeViewModel(MockedRepository())
-        viewModel.getTopMovies().join()
-        assertEquals(5, (viewModel.movieState.value as? SUCCESS)?.data?.size)
-        repeat(4) {
-            viewModel.getTopMovies().join()
+        val viewModel = HomeViewModel(MockedRepository(), mainThreadSurrogate)
+        viewModel.movieState.test {
+            assertEquals(true, (awaitItem() as? SUCCESS)?.data?.isEmpty())
+            viewModel.getTopMovies()
+            assertEquals(true, awaitItem() is HomeViewModel.TopMoviesState.LOADING)
+            assertEquals(5, (awaitItem() as? SUCCESS)?.data?.size)
+            repeat(4) {
+                viewModel.getTopMovies()
+            }
+            skipItems(7)
+            assertEquals(25, (awaitItem() as? SUCCESS)?.data?.size)
+            viewModel.getTopMovies()
+            assertEquals(25, (awaitItem() as? SUCCESS)?.data?.size)
+            cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
-        viewModel.getTopMovies().join()
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
     }
 }

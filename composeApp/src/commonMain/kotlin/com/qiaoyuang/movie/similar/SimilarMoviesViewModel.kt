@@ -2,14 +2,15 @@ package com.qiaoyuang.movie.similar
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.Result
+import com.qiaoyuang.movie.model.domain.Movie
+import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlin.jvm.JvmInline
 
 internal class SimilarMoviesViewModel(
     private val repository: MovieRepository,
@@ -32,30 +33,29 @@ internal class SimilarMoviesViewModel(
             return@launch
         }
         movieState.emit(SimilarMoviesState.LOADING(currentList))
-        val state = try {
-            val list = with(repository.similarMovies(movieId, currentPage.value)) {
-                currentPage.value = page + 1
-                pageLimit.value = totalPages
-                currentList + results
+
+        val state = when (val result = repository.similarMovies(movieId, currentPage.value)) {
+            is Result.Success<MovieResponse> -> {
+                val list = with(result.data) {
+                    currentPage.value = page + 1
+                    pageLimit.value = totalPages
+                    currentList + results
+                }
+                SimilarMoviesState.SUCCESS(list, false)
             }
-            SimilarMoviesState.SUCCESS(list, false)
-        } catch (e: Exception) {
-            e.printStackTrace()
-            SimilarMoviesState.ERROR(currentList)
+            is Result.Error<String> -> SimilarMoviesState.ERROR(currentList)
         }
         movieState.emit(state)
     }
 
     sealed interface SimilarMoviesState {
 
-        val data: List<ApiMovie>
+        val data: List<Movie>
 
-        @JvmInline
-        value class LOADING(override val data: List<ApiMovie>) : SimilarMoviesState
+        data class LOADING(override val data: List<Movie>) : SimilarMoviesState
 
-        data class SUCCESS(override val data: List<ApiMovie>, val isNoMore: Boolean) : SimilarMoviesState
+        data class SUCCESS(override val data: List<Movie>, val isNoMore: Boolean) : SimilarMoviesState
 
-        @JvmInline
-        value class ERROR(override val data: List<ApiMovie>) : SimilarMoviesState
+        data class ERROR(override val data: List<Movie>) : SimilarMoviesState
     }
 }

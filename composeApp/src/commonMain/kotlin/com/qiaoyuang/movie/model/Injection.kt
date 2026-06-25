@@ -1,6 +1,8 @@
 package com.qiaoyuang.movie.model
 
 import com.qiaoyuang.movie.detail.DetailViewModel
+import com.qiaoyuang.movie.domain.SimilarMovieUseCase
+import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
 import com.qiaoyuang.movie.home.HomeViewModel
 import com.qiaoyuang.movie.model.APIService.Companion.API_KEY_PARAM
 import com.qiaoyuang.movie.model.APIService.Companion.BASE_URL
@@ -12,17 +14,21 @@ import io.ktor.client.HttpClient
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.serialization.kotlinx.json.json
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.parameter.parametersOf
 import org.koin.dsl.KoinAppDeclaration
 import org.koin.dsl.koinConfiguration
 import org.koin.dsl.module
 
 @OptIn(ExperimentalSerializationApi::class)
 internal val mainModule = module {
-    single<APIService> { KtorService(get()) }
-    single<MovieRepository> { MovieRepositoryImpl(get()) }
+    single<CoroutineDispatcher>(qualifier = GlobalDispatchers.DEFAULT) { Dispatchers.Default }
+    single<CoroutineDispatcher>(qualifier = GlobalDispatchers.IO) { Dispatchers.IO }
     single {
         Json {
             explicitNulls = false
@@ -46,9 +52,19 @@ internal val mainModule = module {
             }
         }
     }
-    viewModel { HomeViewModel(get()) }
+    single<APIService> { KtorService(get()) }
+    single<MovieRepository> { MovieRepositoryImpl(get(), get(GlobalDispatchers.DEFAULT)) }
+    factory<SimilarMovieUseCase> { SimilarMovieUseCaseImpl(get(), get(GlobalDispatchers.DEFAULT), it.get()) }
+    viewModel { HomeViewModel(get(), get(GlobalDispatchers.DEFAULT)) }
     viewModel { SearchViewModel(get(), get()) }
-    viewModel { DetailViewModel(get(), it.get()) }
+    viewModel {
+        val movieId = it.get<Long>()
+        DetailViewModel(
+            repository = get(),
+            similarMovieUseCase = get { parametersOf(movieId) },
+            movieId = movieId,
+        )
+    }
     viewModel { SimilarMoviesViewModel(get(), it.get()) }
 }
 

@@ -2,16 +2,20 @@ package com.qiaoyuang.movie.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.qiaoyuang.movie.model.ApiMovie
+import com.qiaoyuang.movie.domain.SimilarMovieUseCase
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.SimilarMovieShowModel
-import com.qiaoyuang.movie.model.convertToSimilarMovieShowModel
-import kotlinx.coroutines.*
+import com.qiaoyuang.movie.model.domain.Movie
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 internal class DetailViewModel(
     private val repository: MovieRepository,
+    private val similarMovieUseCase: SimilarMovieUseCase,
     private val movieId: Long,
 ) : ViewModel() {
 
@@ -24,50 +28,29 @@ internal class DetailViewModel(
     val movieDetailState: StateFlow<MovieDetailState>
         field = MutableStateFlow<MovieDetailState>(MovieDetailState.LOADING)
 
-    private suspend fun fetchMovieDetail(): ApiMovie? = try {
-        repository.movieDetail(movieId)
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    }
-
-    private suspend fun fetchSimilarMovieDetail(): List<SimilarMovieShowModel>? = try {
-        val deferred = viewModelScope.async {
-            repository
-                .similarMovies(movieId)
-                .results
-                .asSequence()
-                .filter { it.posterPath != null }
+    fun updateUI() = viewModelScope.launch {
+        val (detailResult, similarMovieResult) = supervisorScope {
+            val detailDeferred = async { repository.movieDetail(movieId) }
+            val similarMovieDeferred = async { similarMovieUseCase() }
+            detailDeferred.await() to similarMovieDeferred.await()
         }
-        val genres = repository.getMovieGenreMap()
-        deferred.await()
-            .map { it.convertToSimilarMovieShowModel(genres) }
-            .toList()
-            .takeIf { it.isNotEmpty() }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
-    }
-
-    fun updateUI() = viewModelScope.launch(Dispatchers.Default) {
-        if (movieDetailState.value == MovieDetailState.ERROR)
-            movieDetailState.emit(MovieDetailState.LOADING)
-        val movieDetailDeferred = async { fetchMovieDetail() }
-        val similarMovies = fetchSimilarMovieDetail()
-        val state = movieDetailDeferred.await()?.let {
-            MovieDetailState.SUCCESS(it, similarMovies)
-        } ?: MovieDetailState.ERROR
-        movieDetailState.emit(state)
+        movieDetailState.value = when (detailResult) {
+            is Result.Success<Movie> -> MovieDetailState.SUCCESS(
+                movie = detailResult.data,
+                similarMovies = (similarMovieResult as? Result.Success<List<SimilarMovieShowModel>?>)?.data,
+            )
+            is Result.Error<String> -> MovieDetailState.ERROR(detailResult.error)
+        }
     }
 
     sealed interface MovieDetailState {
         data object LOADING : MovieDetailState
 
         data class SUCCESS(
-            val movie: ApiMovie,
+            val movie: Movie,
             val similarMovies: List<SimilarMovieShowModel>?,
         ) : MovieDetailState
 
-        data object ERROR : MovieDetailState
+        data class ERROR(val message: String) : MovieDetailState
     }
 }

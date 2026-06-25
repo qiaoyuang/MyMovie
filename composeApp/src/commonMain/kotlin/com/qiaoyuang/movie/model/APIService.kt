@@ -1,5 +1,8 @@
 package com.qiaoyuang.movie.model
 
+import com.qiaoyuang.movie.model.dto.ApiMovieDTO
+import com.qiaoyuang.movie.model.dto.ApiMovieGenresResponseDTO
+import com.qiaoyuang.movie.model.dto.ApiMovieResponseDTO
 import io.mockative.Mockable
 
 @Mockable
@@ -15,13 +18,13 @@ internal interface APIService {
         infix fun buildImageUrl(path: String) = "https://image.tmdb.org/t/p/w500$path"
     }
 
-    suspend infix fun fetchTopRated(page: Int = 1): ApiMovieResponse
+    suspend infix fun fetchTopRated(page: Int = 1): ApiMovieResponseDTO
 
-    suspend infix fun movieDetail(movieId: Long): ApiMovie
+    suspend infix fun movieDetail(movieId: Long): ApiMovieDTO
 
-    suspend fun similarMovies(movieId: Long, page: Int = 1): ApiMovieResponse
+    suspend fun similarMovies(movieId: Long, page: Int = 1): ApiMovieResponseDTO
 
-    suspend fun fetchMovieGenre(): ApiMovieGenresResponse
+    suspend fun fetchMovieGenre(): ApiMovieGenresResponseDTO
 
-    suspend fun search(word: String, page: Int): ApiMovieResponse
+    suspend fun search(word: String, page: Int): ApiMovieResponseDTO
 }

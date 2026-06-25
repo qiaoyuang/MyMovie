@@ -11,7 +11,7 @@ import kotlin.test.BeforeTest
 @OptIn(ExperimentalCoroutinesApi::class)
 open class BasicTest {
 
-    private val mainThreadSurrogate = StandardTestDispatcher()
+    protected val mainThreadSurrogate = StandardTestDispatcher()
 
     @BeforeTest
     open fun setUp() {

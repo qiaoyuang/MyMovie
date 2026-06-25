@@ -1,6 +1,7 @@
 package com.qiaoyuang.movie.model
 
 import androidx.collection.IntObjectMap
+import com.qiaoyuang.movie.model.domain.Movie
 
 internal data class SimilarMovieShowModel(
     val id: Long,
@@ -16,7 +17,7 @@ internal data class SimilarMovieShowModel(
  * @param genres: A genre map (key: index, value: genre name)
  * @return: A SimilarMovieShowModel object from ApiFilm
  */
-internal fun ApiMovie.convertToSimilarMovieShowModel(genres: IntObjectMap<String>): SimilarMovieShowModel {
+internal infix fun Movie.convertToSimilarMovieShowModel(genres: IntObjectMap<String>): SimilarMovieShowModel {
     val genresStr = buildString {
         genreIds?.run {
             forEachIndexed { i, key ->

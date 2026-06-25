@@ -30,7 +30,7 @@ import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.ERROR
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
 import com.qiaoyuang.movie.model.APIService
-import com.qiaoyuang.movie.model.ApiMovie
+import com.qiaoyuang.movie.model.domain.Movie
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.load_more_failed
 import mymovie.composeapp.generated.resources.no_more_results
@@ -135,7 +135,7 @@ internal fun Home(
 }
 
 @Composable
-internal fun MovieItem(data: ApiMovie, navigateToDetail: (id: Long) -> Unit) {
+internal fun MovieItem(data: Movie, navigateToDetail: (id: Long) -> Unit) {
     Row(padding16Modifier.clickable { navigateToDetail(data.id) }) {
         Column {
             data.posterPath?.takeIf { it.isNotEmpty() }?.let {

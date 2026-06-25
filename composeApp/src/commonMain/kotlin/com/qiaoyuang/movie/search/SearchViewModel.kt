@@ -8,15 +8,16 @@ import androidx.lifecycle.viewModelScope
 import androidx.savedstate.SavedState
 import androidx.savedstate.read
 import androidx.savedstate.savedState
-import com.qiaoyuang.movie.model.ApiMovie
-import com.qiaoyuang.movie.model.MovieGenre
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.Result
+import com.qiaoyuang.movie.model.domain.Movie
+import com.qiaoyuang.movie.model.domain.MovieGenre
+import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.jvm.JvmInline
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -36,21 +37,20 @@ internal class SearchViewModel(
 
         data object LOADING : SearchResultState
 
-        @JvmInline
-        value class SUCCESS(val isNoMore: Boolean = false) : SearchResultState
+        data class SUCCESS(val isNoMore: Boolean = false) : SearchResultState
 
         data object ERROR : SearchResultState
     }
 
-    typealias DataWithState = Pair<List<ApiMovie>, SearchResultState>
+    typealias DataWithState = Pair<List<Movie>, SearchResultState>
 
     private data class ScanState(
         val data: DataWithState,
         val prevSet: Set<Int> = emptySet(),
-        val prevPageDataState: Triple<Int, List<ApiMovie>, SearchResultState>? = null,
+        val prevPageDataState: Triple<Int, List<Movie>, SearchResultState>? = null,
     )
 
-    private val emptyList = emptyList<ApiMovie>()
+    private val emptyList = emptyList<Movie>()
     private val default = DataWithState(emptyList, SearchResultState.SUCCESS())
     private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
 
@@ -70,7 +70,7 @@ internal class SearchViewModel(
 
     private val pageLimit = atomic(Int.MAX_VALUE)
 
-    private val fullData = ArrayList<ApiMovie>()
+    private val fullData = ArrayList<Movie>()
 
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val finalResultFlow = searchWordFlow
@@ -83,14 +83,15 @@ internal class SearchViewModel(
                     emit(defaultTriple)
                     return@flow
                 }
-                else try {
-                    val (_, results, totalPages, _) = repository.search(word, page)
-                    pageLimit.value = totalPages
-                    emit(Triple(page, results, SearchResultState.SUCCESS(page == totalPages)))
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    emit(Triple(page, emptyList, SearchResultState.ERROR))
+                val triple = when (val result = repository.search(word, page)) {
+                    is Result.Success<MovieResponse> -> {
+                        val (_, results, totalPages) = result.data
+                        pageLimit.value = totalPages
+                        Triple(page, results, SearchResultState.SUCCESS(page == totalPages))
+                    }
+                    is Result.Error<String> -> Triple(page, emptyList, SearchResultState.ERROR)
                 }
+                emit(triple)
             }
         }
         .combine(genreFilterFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
@@ -171,9 +172,10 @@ internal class SearchViewModel(
     fun prepareGenreList(): Job? {
         if (showGenreList.value.isNotEmpty())
             return null
-        return viewModelScope.launch(Dispatchers.Default) {
-            showGenreList.value = repository.getMovieGenreList().map {
-                ShowGenre(it)
+        return viewModelScope.launch {
+            showGenreList.value = when (val result = repository.getMovieGenreList()) {
+                is Result.Success<List<MovieGenre>> -> result.data.map { ShowGenre(it) }
+                is Result.Error<String> -> emptyList()
             }
         }
     }

@@ -2,10 +2,10 @@ package com.qiaoyuang.movie.test
 
 import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
-import com.qiaoyuang.movie.model.ApiMovie
-import com.qiaoyuang.movie.model.ApiMovieGenresResponse
-import com.qiaoyuang.movie.model.ApiMovieResponse
-import com.qiaoyuang.movie.model.MovieGenre
+import com.qiaoyuang.movie.model.dto.ApiMovieDTO
+import com.qiaoyuang.movie.model.dto.ApiMovieGenresResponseDTO
+import com.qiaoyuang.movie.model.dto.ApiMovieResponseDTO
+import com.qiaoyuang.movie.model.dto.MovieGenreDTO
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlin.String
 
@@ -18,7 +18,7 @@ internal class MockedRepository : MovieRepository {
         const val GENRE_SIZE = 3
     }
 
-    private fun generateMovie(id: Long): ApiMovie = ApiMovie(
+    private fun generateMovie(id: Long): ApiMovieDTO = ApiMovieDTO(
         id = id,
         title = ('a'.code + id.toInt()).toChar().toString(),
         overview = "abc",
@@ -29,16 +29,16 @@ internal class MockedRepository : MovieRepository {
     )
 
     private var point = 1L
-    private fun generateMovies(count: Int): List<ApiMovie> = buildList {
+    private fun generateMovies(count: Int): List<ApiMovieDTO> = buildList {
         repeat(count) {
             add(generateMovie(point++))
         }
     }
 
-    override suspend fun getMovieGenreList(): List<MovieGenre> = listOf(
-        MovieGenre(1, "a"),
-        MovieGenre(2, "b"),
-        MovieGenre(3, "c")
+    override suspend fun getMovieGenreList(): List<MovieGenreDTO> = listOf(
+        MovieGenreDTO(1, "a"),
+        MovieGenreDTO(2, "b"),
+        MovieGenreDTO(3, "c")
     )
 
     override suspend fun getMovieGenreMap(): IntObjectMap<String> = getMovieGenreList().run {
@@ -49,34 +49,34 @@ internal class MockedRepository : MovieRepository {
         map
     }
 
-    override suspend fun fetchTopRated(page: Int): ApiMovieResponse = ApiMovieResponse(
+    override suspend fun fetchTopRated(page: Int): ApiMovieResponseDTO = ApiMovieResponseDTO(
         page = page,
         results = generateMovies(COUNT),
         totalPages = TOTAL_PAGES,
         totalResults = TOTAL_RESULTS,
     )
 
-    override suspend fun movieDetail(movieId: Long): ApiMovie = generateMovie(movieId)
+    override suspend fun movieDetail(movieId: Long): ApiMovieDTO = generateMovie(movieId)
 
     override suspend fun similarMovies(
         movieId: Long,
         page: Int
-    ): ApiMovieResponse = ApiMovieResponse(
+    ): ApiMovieResponseDTO = ApiMovieResponseDTO(
         page = page,
         results = generateMovies(COUNT),
         totalPages = TOTAL_PAGES,
         totalResults = TOTAL_RESULTS,
     )
 
-    override suspend fun fetchMovieGenre(): ApiMovieGenresResponse = ApiMovieGenresResponse(
+    override suspend fun fetchMovieGenre(): ApiMovieGenresResponseDTO = ApiMovieGenresResponseDTO(
         genres = listOf(
-            MovieGenre(1, "a"),
-            MovieGenre(2, "b"),
-            MovieGenre(3, "c")
+            MovieGenreDTO(1, "a"),
+            MovieGenreDTO(2, "b"),
+            MovieGenreDTO(3, "c")
         ),
     )
 
-    override suspend fun search(word: String, page: Int): ApiMovieResponse = ApiMovieResponse(
+    override suspend fun search(word: String, page: Int): ApiMovieResponseDTO = ApiMovieResponseDTO(
         page = 1,
         results = generateMovies(TOTAL_RESULTS),
         totalPages = TOTAL_PAGES,

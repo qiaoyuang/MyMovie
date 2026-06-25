@@ -26,8 +26,8 @@ import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.detail.DetailViewModel.MovieDetailState
 import com.qiaoyuang.movie.home.Ratting
 import com.qiaoyuang.movie.model.APIService
-import com.qiaoyuang.movie.model.ApiMovie
 import com.qiaoyuang.movie.model.SimilarMovieShowModel
+import com.qiaoyuang.movie.model.domain.Movie
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.movie_detail
 import mymovie.composeapp.generated.resources.similar_movies
@@ -82,7 +82,7 @@ internal fun Detail(
             }
             when (val detailState = detailViewModel.movieDetailState.collectAsStateWithLifecycle().value) {
                 MovieDetailState.LOADING -> Loading()
-                MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
+                is MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
                 is MovieDetailState.SUCCESS -> {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         MovieDetail(detailState.movie)
@@ -98,7 +98,7 @@ internal fun Detail(
 }
 
 @Composable
-private fun MovieDetail(movie: ApiMovie) {
+private fun MovieDetail(movie: Movie) {
     Column(containerModifier) {
         Spacer(height24Modifier)
         movie.backdropPath?.let {

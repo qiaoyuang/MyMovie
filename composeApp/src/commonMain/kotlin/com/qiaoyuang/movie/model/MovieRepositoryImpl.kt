@@ -2,44 +2,65 @@ package com.qiaoyuang.movie.model
 
 import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
-import kotlin.concurrent.Volatile
+import com.qiaoyuang.movie.model.domain.Movie
+import com.qiaoyuang.movie.model.domain.MovieGenre
+import com.qiaoyuang.movie.model.domain.MovieResponse
+import com.qiaoyuang.movie.model.domain.toDomain
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 
-internal class MovieRepositoryImpl(private val service: APIService) : MovieRepository {
+internal class MovieRepositoryImpl(
+    private val service: APIService,
+    private val defaultDispatcher: CoroutineDispatcher,
+) : MovieRepository {
 
-    override suspend infix fun fetchTopRated(page: Int): ApiMovieResponse =
-        service fetchTopRated page
+    override suspend infix fun fetchTopRated(page: Int): Result<MovieResponse, String> =
+        wrap { service.fetchTopRated(page).toDomain() }
 
-    override suspend fun movieDetail(movieId: Long): ApiMovie =
-        service movieDetail movieId
+    override suspend fun movieDetail(movieId: Long): Result<Movie, String> =
+        wrap { (service movieDetail movieId).toDomain() }
 
-    override suspend fun similarMovies(movieId: Long, page: Int): ApiMovieResponse =
-        service.similarMovies(movieId, page)
+    override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, String> =
+        wrap { service.similarMovies(movieId, page).toDomain() }
 
-    override suspend fun fetchMovieGenre(): ApiMovieGenresResponse =
-        service.fetchMovieGenre()
+    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, String> =
+        wrap { service.fetchMovieGenre().genres.map { it.toDomain() } }
 
-    override suspend fun search(word: String, page: Int): ApiMovieResponse =
-        service.search(word, page)
+    override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
+        wrap { service.search(word, page).toDomain() }
 
-    @Volatile
-    private var movieGenreList: List<MovieGenre>? = null
-    override suspend fun getMovieGenreList(): List<MovieGenre> = movieGenreList ?: try {
-        fetchMovieGenre().genres.also {
-            movieGenreList = it
+    private suspend inline fun <T> wrap(crossinline fetch: suspend () -> T): Result<T, String> =
+        withContext(defaultDispatcher) {
+            try {
+                Result.Success(fetch())
+            } catch (e: Exception) {
+                if (e is CancellationException) throw e
+                Result.Error(e.message ?: "")
+            }
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        emptyList()
+
+    private var movieGenreList: Result.Success<List<MovieGenre>>? = null
+    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> = movieGenreList ?: kotlin.run {
+        val result = fetchMovieGenre()
+        if (result is Result.Success<List<MovieGenre>>)
+            movieGenreList = result
+        return result
     }
 
-    @Volatile
-    private var movieGenreMap: IntObjectMap<String>? = null
-    override suspend fun getMovieGenreMap(): IntObjectMap<String> = movieGenreMap ?: getMovieGenreList().run {
-        val map = MutableIntObjectMap<String>(size)
-        forEach { (id, name) ->
-            map[id] = name
+    private var movieGenreMap: Result.Success<IntObjectMap<String>>? = null
+    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> = movieGenreMap ?: kotlin.run {
+        when (val result = getMovieGenreList()) {
+            is Result.Success<List<MovieGenre>> -> {
+                val data = result.data
+                val map = MutableIntObjectMap<String>(data.size)
+                data.forEach { (id, name) ->
+                    map[id] = name
+                }
+                movieGenreMap = Result.Success(map)
+                movieGenreMap!!
+            }
+            is Result.Error<String> -> result
         }
-        movieGenreMap = map
-        map
     }
 }

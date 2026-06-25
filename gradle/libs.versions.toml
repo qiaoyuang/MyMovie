@@ -1,7 +1,7 @@
 [versions]
 
 junit = "4.13.2"
-kotlin = "2.3.21"
+kotlin = "2.4.0"
 ksp = "2.3.7"
 agp = "9.2.1"
 android-compileSdk = "37"
@@ -18,7 +18,7 @@ androidx-core-ktx = "1.18.0"
 androidx-lifecycle = "2.10.0"
 androidx-navigation3 = "1.1.1"
 androidx-lifecycle-navigation3 = "2.10.0"
-androidx-material-adaptive = "1.3.0-beta01"
+androidx-material-adaptive = "1.3.0-beta02"
 androidx-appfunction = "1.0.0-alpha09"
 
 androidx-test-junit = "1.3.0"
@@ -28,12 +28,13 @@ kotlinx-serialization = "1.11.0"
 kotlinx-coroutines = "1.11.0"
 kotlinx-atomicfu = "0.33.0"
 
-coil = "3.4.0"
+coil = "3.5.0"
 ktor = "3.5.0"
-koin = "4.2.1"
+koin = "4.2.2"
 mmkv-kotlin = "1.3.2"
 sqllin = "2.2.0"
 mockative = "3.3.1"
+turbine = "1.2.1"
 mmkv-origin = "2.2.2"
 
 [libraries]
@@ -92,6 +93,7 @@ sqllin-processor = { group = "com.ctrip.kotlin", name = "sqllin-processor", vers
 desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugar-jdk-libs" }
 
 mockative = { group = "io.mockative", name = "mockative", version.ref = "mockative" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 
 compose-runtime = { group = "org.jetbrains.compose.runtime", name = "runtime", version.ref = "compose-plugin" }
 compose-foundation = { group = "org.jetbrains.compose.foundation", name = "foundation", version.ref = "compose-plugin" }

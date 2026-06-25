@@ -112,6 +112,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
             implementation(libs.mockative)
+            implementation(libs.turbine)
         }
 
         androidMain.dependencies {

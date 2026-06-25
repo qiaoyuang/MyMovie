@@ -11,7 +11,7 @@ class DetailViewModelTest : BasicTest() {
     fun test_updateUI() = runTest {
         val viewModel = DetailViewModel(MockedRepository(), 1L)
         viewModel.updateUI().join()
-        (viewModel.movieDetailState.value as? DetailViewModel.MovieDetailState.SUCCESS)?.let {
+        (viewModel.uiState.value as? DetailViewModel.MovieDetailState.SUCCESS)?.let {
             assertEquals(1L, it.movie.id)
             assertEquals(('a'.code + it.movie.id.toInt()).toChar().toString(), it.movie.title)
             assertEquals("abc", it.movie.overview)
