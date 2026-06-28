@@ -39,20 +39,29 @@ internal class SearchViewModel(
 
         data class SUCCESS(val isNoMore: Boolean = false) : SearchResultState
 
-        data object ERROR : SearchResultState
+        data class ERROR(val message: String) : SearchResultState
     }
 
-    typealias DataWithState = Pair<List<Movie>, SearchResultState>
+    private data class PageDataState(
+        val page: Int,
+        val data: List<Movie>,
+        val searchResultState: SearchResultState,
+    )
 
     private data class ScanState(
-        val data: DataWithState,
-        val prevSet: Set<Int> = emptySet(),
-        val prevPageDataState: Triple<Int, List<Movie>, SearchResultState>? = null,
+        val filteredData: DataWithState,
+        val accumulatedFullData: List<Movie> = emptyList(),
+        val prevPageDataState: PageDataState? = null,
+    )
+
+    data class DataWithState(
+        val data: List<Movie>,
+        val state: SearchResultState,
     )
 
     private val emptyList = emptyList<Movie>()
-    private val default = DataWithState(emptyList, SearchResultState.SUCCESS())
-    private val defaultTriple = Triple(1, emptyList, SearchResultState.SUCCESS())
+    private val defaultDataWithState = DataWithState(emptyList, SearchResultState.SUCCESS())
+    private val defaultPageDataState = PageDataState(1, emptyList, SearchResultState.SUCCESS())
 
     val searchWordFlow: StateFlow<String>
         field = savedStateHandle.getMutableStateFlow(
@@ -70,63 +79,56 @@ internal class SearchViewModel(
 
     private val pageLimit = atomic(Int.MAX_VALUE)
 
-    private val fullData = ArrayList<Movie>()
-
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
     val finalResultFlow = searchWordFlow
         .debounce(300.toDuration(DurationUnit.MILLISECONDS))
         .combine(pageStateFlow) { word, page -> word to page }
         .flatMapLatest { (word, page) ->
             flow {
-                emit(Triple(page, emptyList, SearchResultState.LOADING))
+                emit(PageDataState(page, emptyList, SearchResultState.LOADING))
                 if (word.isBlank()) {
-                    emit(defaultTriple)
+                    emit(defaultPageDataState)
                     return@flow
                 }
-                val triple = when (val result = repository.search(word, page)) {
+                val pageDataState = when (val result = repository.search(word, page)) {
                     is Result.Success<MovieResponse> -> {
                         val (_, results, totalPages) = result.data
                         pageLimit.value = totalPages
-                        Triple(page, results, SearchResultState.SUCCESS(page == totalPages))
+                        PageDataState(page, results, SearchResultState.SUCCESS(page == totalPages))
                     }
-                    is Result.Error<String> -> Triple(page, emptyList, SearchResultState.ERROR)
+                    is Result.Error<String> -> PageDataState(page, emptyList, SearchResultState.ERROR(result.error))
                 }
-                emit(triple)
+                emit(pageDataState)
             }
         }
         .combine(genreFilterFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
-        .scan(ScanState(default)) { acc, (pageDataState, set) ->
+        .scan(ScanState(defaultDataWithState)) { (_, accumulatedFullData, prevPageDataState), (pageDataState, set) ->
             val (page, newResults, state) = pageDataState
-            val pageDataChanged = pageDataState !== acc.prevPageDataState
-            if (pageDataChanged) {
-                if (page == 1)
-                    fullData.clear()
-                fullData.addAll(newResults)
-            }
-            val results = if (set == acc.prevSet) {
-                if (!pageDataChanged) {
-                    acc.data.first
-                } else {
-                    val filterResults = if (set.isEmpty())
-                        newResults
-                    else newResults.filter { movie ->
-                        movie.genreIds?.any { id -> set.contains(id) } == true
-                    }
-                    if (page == 1) filterResults else acc.data.first + filterResults
-                }
+            val pageDataChanged = pageDataState !== prevPageDataState
+
+            val nextFullData = if (pageDataChanged) {
+                if (page == 1) newResults else accumulatedFullData + newResults
             } else {
-                if (set.isEmpty())
-                    fullData.toList()
-                else
-                    fullData.filter { movie ->
-                        movie.genreIds?.any { id -> set.contains(id) } == true
-                    }
+                accumulatedFullData
             }
-            ScanState(DataWithState(results, state), set, pageDataState)
+
+            val nextFilteredList = if (set.isEmpty()) {
+                nextFullData
+            } else {
+                nextFullData.filter { movie ->
+                    movie.genreIds?.any { id -> set.contains(id) } == true
+                }
+            }
+
+            ScanState(
+                filteredData = DataWithState(nextFilteredList, state),
+                accumulatedFullData = nextFullData,
+                prevPageDataState = pageDataState
+            )
         }
-        .map { it.data }
+        .map { it.filteredData }
         .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), defaultDataWithState)
 
 
     init {

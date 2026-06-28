@@ -44,7 +44,7 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
             val (results, state) = dataWithState
             if (results.isEmpty()) when (state) {
                 LOADING -> Loading()
-                ERROR -> EmptyData(stringResource(Res.string.network_problem))
+                is ERROR -> EmptyData(stringResource(Res.string.network_problem))
                 is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
             } else {
                 val scrollState = rememberLazyListState()
