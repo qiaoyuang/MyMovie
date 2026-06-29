@@ -43,6 +43,7 @@ class SearchViewModelTest : BasicTest() {
 
             viewModel.search("movie")
             advanceTimeBy(299.toDuration(DurationUnit.MILLISECONDS))
+            expectNoEvents()
             val loading1 = awaitItem()
             assertEquals(emptyList(), loading1.data)
             assertTrue(loading1.state is LOADING)
