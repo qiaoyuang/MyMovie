@@ -2,7 +2,6 @@ package com.qiaoyuang.movie.test
 
 import app.cash.turbine.test
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel
-import com.qiaoyuang.movie.similar.SimilarMoviesViewModel.SimilarMoviesState.SUCCESS
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,26 +13,31 @@ class SimilarMovieViewModelTest : BasicTest() {
     fun test_getSimilarMovies() = runTest {
         val viewModel = SimilarMoviesViewModel(MockedRepository(), 1L)
         viewModel.movieState.test {
-            val (list1, isNoMore1) = awaitItem().convert2SUCCESS()
-            assertEquals(emptyList(), list1)
-            assertEquals(false, isNoMore1)
+            val state1 = awaitItem()
+            assertEquals(emptyList(), state1.data)
+            assertEquals(false, state1.isNoMore)
+            assertEquals(false, state1.isLoading)
+            assertEquals(false, state1.isError)
             viewModel.getSimilarMovies()
-            val (list2, isNoMore2) = awaitItem().convert2SUCCESS()
-            assertEquals(5, list2.size)
-            assertTrue(isNoMore2)
+            val state2 = awaitItem()
+            assertEquals(emptyList(), state2.data)
+            assertTrue(state2.isLoading)
+            val state3 = awaitItem()
+            assertEquals(5, state3.data.size)
+            assertEquals(false, state3.isNoMore)
+            assertEquals(false, state3.isLoading)
             repeat(4) {
                 viewModel.getSimilarMovies()
             }
+            skipItems(7)
+            val state4 = awaitItem()
+            assertEquals(25, state4.data.size)
+            assertEquals(false, state4.isNoMore)
+            viewModel.getSimilarMovies()
+            val state5 = awaitItem()
+            assertEquals(25, state5.data.size)
+            assertEquals(true, state5.isNoMore)
+            cancelAndIgnoreRemainingEvents()
         }
-        assertEquals(5, (viewModel.movieState.value as? SUCCESS)?.data?.size)
-        repeat(4) {
-            viewModel.getSimilarMovies().join()
-        }
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
-        viewModel.getSimilarMovies().join()
-        assertEquals(25, (viewModel.movieState.value as? SUCCESS)?.data?.size)
     }
-
-    private fun SimilarMoviesViewModel.SimilarMoviesState.convert2SUCCESS(): SUCCESS =
-        this as? SUCCESS ?: throw IllegalStateException("Not expectation")
 }

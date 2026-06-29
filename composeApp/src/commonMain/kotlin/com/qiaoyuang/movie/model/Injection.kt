@@ -56,7 +56,7 @@ internal val mainModule = module {
     single<MovieRepository> { MovieRepositoryImpl(get(), get(GlobalDispatchers.DEFAULT)) }
     factory<SimilarMovieUseCase> { SimilarMovieUseCaseImpl(get(), get(GlobalDispatchers.DEFAULT), it.get()) }
     viewModel { HomeViewModel(get(), get(GlobalDispatchers.DEFAULT)) }
-    viewModel { SearchViewModel(get(), get()) }
+    viewModel { SearchViewModel(get(), get(), get(GlobalDispatchers.DEFAULT)) }
     viewModel {
         val movieId = it.get<Long>()
         DetailViewModel(

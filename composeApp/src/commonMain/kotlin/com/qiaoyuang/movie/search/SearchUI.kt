@@ -125,7 +125,7 @@ internal fun SearchCard() {
                             modifier = size24Modifier
                         )
                     }
-                    val genreList by searchViewModel.showGenreList
+                    val genreList by searchViewModel.showGenreList.collectAsStateWithLifecycle()
                    DropdownMenu(
                         expanded = openDropDownMenu,
                         onDismissRequest = {
@@ -160,10 +160,10 @@ internal fun SearchCard() {
 @Composable
 private fun FilterItem(showGenre: SearchViewModel.ShowGenre) {
     val searchViewModel = koinViewModel<SearchViewModel>()
-    var isSelected by showGenre.isSelected
+    val isSelected by showGenre.isSelected.collectAsStateWithLifecycle()
     Row(
         modifier = Modifier.clickable {
-            isSelected = !isSelected
+            showGenre.isSelected.value = !isSelected
             searchViewModel.selectGenre(showGenre)
         }.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,

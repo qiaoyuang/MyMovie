@@ -2,6 +2,7 @@ package com.qiaoyuang.movie.test
 
 import app.cash.turbine.test
 import com.qiaoyuang.movie.home.HomeViewModel
+import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.LOADING
 import com.qiaoyuang.movie.home.HomeViewModel.TopMoviesState.SUCCESS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -17,7 +18,7 @@ class HomeViewModelTest : BasicTest() {
         viewModel.movieState.test {
             assertEquals(true, (awaitItem() as? SUCCESS)?.data?.isEmpty())
             viewModel.getTopMovies()
-            assertEquals(true, awaitItem() is HomeViewModel.TopMoviesState.LOADING)
+            assertEquals(true, awaitItem() is LOADING)
             assertEquals(5, (awaitItem() as? SUCCESS)?.data?.size)
             repeat(4) {
                 viewModel.getTopMovies()

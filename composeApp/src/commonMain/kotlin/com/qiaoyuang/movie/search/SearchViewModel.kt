@@ -1,7 +1,5 @@
 package com.qiaoyuang.movie.search
 
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,6 +22,7 @@ import kotlin.time.toDuration
 internal class SearchViewModel(
     private val repository: MovieRepository,
     private val savedStateHandle: SavedStateHandle,
+    defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private companion object {
@@ -127,7 +126,7 @@ internal class SearchViewModel(
             )
         }
         .map { it.filteredData }
-        .flowOn(Dispatchers.Default)
+        .flowOn(defaultDispatcher)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), defaultDataWithState)
 
 
@@ -166,10 +165,11 @@ internal class SearchViewModel(
 
     data class ShowGenre(
         val genre: MovieGenre,
-        val isSelected: MutableState<Boolean> = mutableStateOf(false),
+        val isSelected: MutableStateFlow<Boolean> = MutableStateFlow(false),
     )
 
-    val showGenreList = mutableStateOf(emptyList<ShowGenre>())
+    val showGenreList: StateFlow<List<ShowGenre>>
+        field = MutableStateFlow(emptyList<ShowGenre>())
 
     fun prepareGenreList(): Job? {
         if (showGenreList.value.isNotEmpty())
@@ -184,7 +184,7 @@ internal class SearchViewModel(
 
     private val genreMutex = Mutex()
 
-    fun selectGenre(genre: ShowGenre) = viewModelScope.launch(Dispatchers.Default) {
+    fun selectGenre(genre: ShowGenre) = viewModelScope.launch {
         genreMutex.withLock {
             if (genre.isSelected.value) {
                 selectedGenres.add(genre.genre.id)

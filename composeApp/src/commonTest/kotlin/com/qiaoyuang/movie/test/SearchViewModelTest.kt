@@ -1,22 +1,24 @@
 package com.qiaoyuang.movie.test
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
-import com.qiaoyuang.movie.model.dto.ApiMovieDTO
-import com.qiaoyuang.movie.model.dto.MovieGenreDTO
+import app.cash.turbine.test
+import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.search.SearchViewModel
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
+import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.produceIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class SearchViewModelTest : BasicTest() {
 
-    private val viewModel = SearchViewModel(MockedRepository(), SavedStateHandle())
+    private val viewModel = SearchViewModel(MockedRepository(), SavedStateHandle(), mainThreadSurrogate)
 
     @Test
     fun test_prepareGenreList() = runTest {
@@ -27,51 +29,71 @@ class SearchViewModelTest : BasicTest() {
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     fun test_search() = runTest {
-        val emptyList = emptyList<ApiMovieDTO>()
+        viewModel.finalResultFlow.test {
+            val initial = awaitItem()
+            assertEquals(emptyList(), initial.data)
+            assertTrue(initial.state is SUCCESS)
 
-        val channel = viewModel.finalResultFlow.produceIn(backgroundScope)
-        assertEquals(emptyList to SUCCESS(), channel.receive())
+            viewModel.search("movie")
+            advanceTimeBy(299.toDuration(DurationUnit.MILLISECONDS))
+            val loading1 = awaitItem()
+            assertEquals(emptyList(), loading1.data)
+            assertTrue(loading1.state is LOADING)
 
-        viewModel.search("ABC")
-        val (data0, state0) = channel.receive()
-        assertEquals(emptyList, data0)
-        assertEquals(LOADING, state0)
+            val success1 = awaitItem()
+            assertEquals(MockedRepository.TOTAL_RESULTS, success1.data.size)
+            assertEquals(false, (success1.state as SUCCESS).isNoMore)
 
-        val (data1, state1) = channel.receive()
-        assertEquals(MockedRepository.TOTAL_RESULTS, data1.size)
-        assertTrue(state1 is SUCCESS)
+            // Load pages 2–4 one at a time so the scan accumulates correctly
+            repeat(3) {
+                viewModel.loadMore()
+                skipItems(2)
+            }
 
-        println(data1.size)
+            // Load the last page and verify isNoMore
+            viewModel.loadMore()
+            val loading5 = awaitItem()
+            assertTrue(loading5.state is LOADING)
+            val success5 = awaitItem()
+            assertEquals(MockedRepository.TOTAL_RESULTS * MockedRepository.TOTAL_PAGES, success5.data.size)
+            assertEquals(true, (success5.state as SUCCESS).isNoMore)
 
-        viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenreDTO(1, "a"),
-            isSelected = mutableStateOf(true),
-        ))
-        val (data2, state2) = channel.receive()
-        val count1 = MockedRepository.TOTAL_RESULTS / 3 + if (MockedRepository.TOTAL_RESULTS % 3 >= 1) 1 else 0
-        assertEquals(count1, data2.size)
-        assertTrue(state2 is SUCCESS)
+            // loadMore past the limit is a no-op
+            viewModel.loadMore()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-        println(data2.size)
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun test_selectGenre() = runTest {
+        viewModel.finalResultFlow.test {
+            skipItems(1) // initial state
 
-        viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenreDTO(2, "b"),
-            isSelected = mutableStateOf(true),
-        ))
-        val (data3, state3) = channel.receive()
-        val count2 = count1 + MockedRepository.TOTAL_RESULTS / 3 + if (MockedRepository.TOTAL_RESULTS % 3 >= 2) 1 else 0
-        assertEquals(count2, data3.size)
-        assertTrue(state3 is SUCCESS)
+            viewModel.search("movie")
+            skipItems(2) // loading and success: 25 movies (IDs 1–25, genreIds = [id % 3])
 
-        println(data3.size)
+            // Select genre 1 → movies where id%3==1: IDs 1,4,7,10,13,16,19,22,25 = 9
+            val genre1 = SearchViewModel.ShowGenre(MovieGenre(1, "a"), MutableStateFlow(true))
+            viewModel.selectGenre(genre1)
+            assertEquals(9, awaitItem().data.size)
 
-        viewModel.selectGenre(SearchViewModel.ShowGenre(
-            genre = MovieGenreDTO(2, "b"),
-            isSelected = mutableStateOf(false),
-        ))
-        val (data4, state4) = channel.receive()
-        println(data4.size)
-        assertEquals(count1, data4.size)
-        assertTrue(state4 is SUCCESS)
+            // Also select genre 2 → union adds id%3==2: IDs 2,5,8,11,14,17,20,23 = 8 more
+            val genre2 = SearchViewModel.ShowGenre(MovieGenre(2, "b"), MutableStateFlow(true))
+            viewModel.selectGenre(genre2)
+            assertEquals(17, awaitItem().data.size)
+
+            // Deselect genre 1 → only genre 2 remains, 8 movies
+            genre1.isSelected.value = false
+            viewModel.selectGenre(genre1)
+            assertEquals(8, awaitItem().data.size)
+
+            // Deselect genre 2 → no filter, all 25 movies visible again
+            genre2.isSelected.value = false
+            viewModel.selectGenre(genre2)
+            assertEquals(MockedRepository.TOTAL_RESULTS, awaitItem().data.size)
+
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }
