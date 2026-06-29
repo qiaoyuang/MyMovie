@@ -87,8 +87,4 @@ internal class MockedRepository : MovieRepository {
                 totalPages = TOTAL_PAGES,
             )
         )
-
-    fun reset() {
-        point = 1L
-    }
 }

@@ -19,7 +19,7 @@ open class BasicTest {
     }
 
     @AfterTest
-    open fun testDown() {
+    open fun tearDown() {
         Dispatchers.resetMain()
     }
 }

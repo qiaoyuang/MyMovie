@@ -2,8 +2,10 @@ package com.qiaoyuang.movie.test
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.search.SearchViewModel
+import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -12,13 +14,19 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest : BasicTest() {
 
-    private val viewModel = SearchViewModel(MockedRepository(), SavedStateHandle(), mainThreadSurrogate)
+    private fun searchViewModel(repository: MovieRepository = MockedRepository()) =
+        SearchViewModel(repository, SavedStateHandle(), mainThreadSurrogate)
+
+    private val viewModel = searchViewModel()
 
     @Test
     fun test_prepareGenreList() = runTest {
@@ -27,7 +35,6 @@ class SearchViewModelTest : BasicTest() {
     }
 
     @Test
-    @OptIn(ExperimentalCoroutinesApi::class)
     fun test_search() = runTest {
         viewModel.finalResultFlow.test {
             val initial = awaitItem()
@@ -42,7 +49,7 @@ class SearchViewModelTest : BasicTest() {
 
             val success1 = awaitItem()
             assertEquals(MockedRepository.TOTAL_RESULTS, success1.data.size)
-            assertEquals(false, (success1.state as SUCCESS).isNoMore)
+            assertFalse(assertIs<SUCCESS>(success1.state).isNoMore)
 
             // Load pages 2–4 one at a time so the scan accumulates correctly
             repeat(3) {
@@ -56,7 +63,7 @@ class SearchViewModelTest : BasicTest() {
             assertTrue(loading5.state is LOADING)
             val success5 = awaitItem()
             assertEquals(MockedRepository.TOTAL_RESULTS * MockedRepository.TOTAL_PAGES, success5.data.size)
-            assertEquals(true, (success5.state as SUCCESS).isNoMore)
+            assertTrue(assertIs<SUCCESS>(success5.state).isNoMore)
 
             // loadMore past the limit is a no-op
             viewModel.loadMore()
@@ -65,7 +72,6 @@ class SearchViewModelTest : BasicTest() {
     }
 
     @Test
-    @OptIn(ExperimentalCoroutinesApi::class)
     fun test_selectGenre() = runTest {
         viewModel.finalResultFlow.test {
             skipItems(1) // initial state
@@ -95,5 +101,34 @@ class SearchViewModelTest : BasicTest() {
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun test_search_error() = runTest {
+        val errorViewModel = searchViewModel(ErrorMockedRepository())
+        errorViewModel.finalResultFlow.test {
+            val initial = awaitItem()
+            assertEquals(emptyList(), initial.data)
+            assertTrue(initial.state is SUCCESS)
+
+            errorViewModel.search("movie")
+            advanceTimeBy(299.toDuration(DurationUnit.MILLISECONDS))
+            val loading = awaitItem()
+            assertEquals(emptyList(), loading.data)
+            assertTrue(loading.state is LOADING)
+
+            val error = awaitItem()
+            assertEquals(emptyList(), error.data)
+            assertEquals(ErrorMockedRepository.ERROR_MESSAGE, assertIs<ERROR>(error.state).message)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun test_prepareGenreList_error() = runTest {
+        val errorViewModel = searchViewModel(ErrorMockedRepository())
+        errorViewModel.prepareGenreList()?.join()
+        assertTrue(errorViewModel.showGenreList.value.isEmpty())
     }
 }
