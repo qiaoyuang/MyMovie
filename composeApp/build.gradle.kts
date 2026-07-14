@@ -16,7 +16,7 @@ plugins {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xcontext-parameters", "-Xexplicit-backing-fields")
+        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xexplicit-backing-fields", "-Xexplicit-context-arguments", "-Xcollection-literals", "-Xintrinsic-const-evaluation", "-Xallow-returns-result-of")
     }
 
     android {
