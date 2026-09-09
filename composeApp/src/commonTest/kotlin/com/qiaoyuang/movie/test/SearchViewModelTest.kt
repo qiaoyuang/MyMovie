@@ -3,13 +3,11 @@ package com.qiaoyuang.movie.test
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.qiaoyuang.movie.model.MovieRepository
-import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.search.SearchViewModel
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -30,8 +28,12 @@ class SearchViewModelTest : BasicTest() {
 
     @Test
     fun test_prepareGenreList() = runTest {
-        viewModel.prepareGenreList()?.join()
-        assertEquals(MockedRepository.GENRE_SIZE, viewModel.showGenreList.value.size)
+        viewModel.genreFilterState.test {
+            assertTrue(awaitItem().genres.isEmpty())
+            viewModel.prepareGenreList()?.join()
+            assertEquals(MockedRepository.GENRE_SIZE, awaitItem().genres.size)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
@@ -81,23 +83,19 @@ class SearchViewModelTest : BasicTest() {
             skipItems(2) // loading and success: 25 movies (IDs 1–25, genreIds = [id % 3])
 
             // Select genre 1 → movies where id%3==1: IDs 1,4,7,10,13,16,19,22,25 = 9
-            val genre1 = SearchViewModel.ShowGenre(MovieGenre(1, "a"), MutableStateFlow(true))
-            viewModel.selectGenre(genre1)
+            viewModel.toggleGenre(1)
             assertEquals(9, awaitItem().data.size)
 
             // Also select genre 2 → union adds id%3==2: IDs 2,5,8,11,14,17,20,23 = 8 more
-            val genre2 = SearchViewModel.ShowGenre(MovieGenre(2, "b"), MutableStateFlow(true))
-            viewModel.selectGenre(genre2)
+            viewModel.toggleGenre(2)
             assertEquals(17, awaitItem().data.size)
 
-            // Deselect genre 1 → only genre 2 remains, 8 movies
-            genre1.isSelected.value = false
-            viewModel.selectGenre(genre1)
+            // Toggle genre 1 back off → only genre 2 remains, 8 movies
+            viewModel.toggleGenre(1)
             assertEquals(8, awaitItem().data.size)
 
-            // Deselect genre 2 → no filter, all 25 movies visible again
-            genre2.isSelected.value = false
-            viewModel.selectGenre(genre2)
+            // Toggle genre 2 back off → no filter, all 25 movies visible again
+            viewModel.toggleGenre(2)
             assertEquals(MockedRepository.TOTAL_RESULTS, awaitItem().data.size)
 
             cancelAndIgnoreRemainingEvents()
@@ -129,7 +127,12 @@ class SearchViewModelTest : BasicTest() {
     @Test
     fun test_prepareGenreList_error() = runTest {
         val errorViewModel = searchViewModel(ErrorMockedRepository())
-        errorViewModel.prepareGenreList()?.join()
-        assertTrue(errorViewModel.showGenreList.value.isEmpty())
+        errorViewModel.genreFilterState.test {
+            assertTrue(awaitItem().genres.isEmpty())
+            errorViewModel.prepareGenreList()?.join()
+            // A failed fetch leaves the catalogue empty, so no new state is emitted
+            expectNoEvents()
+        }
     }
+
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.home.MovieItem
+import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
 import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
@@ -125,7 +126,7 @@ internal fun SearchCard() {
                             modifier = size24Modifier
                         )
                     }
-                    val genreList by searchViewModel.showGenreList.collectAsStateWithLifecycle()
+                    val genreFilterState by searchViewModel.genreFilterState.collectAsStateWithLifecycle()
                    DropdownMenu(
                         expanded = openDropDownMenu,
                         onDismissRequest = {
@@ -133,8 +134,15 @@ internal fun SearchCard() {
                         },
                        modifier = Modifier.background(popWindowBackground)
                     ) {
-                       genreList.forEach {
-                           FilterItem(it)
+                       // State flows down (genre + isSelected), the click event flows up.
+                       // isSelected is derived from the single selectedIds set, so it always
+                       // matches the filter that is actually applied to the results.
+                       genreFilterState.genres.forEach { genre ->
+                           FilterItem(
+                               genre = genre,
+                               isSelected = genre.id in genreFilterState.selectedIds,
+                               onClick = { searchViewModel.toggleGenre(genre.id) },
+                           )
                        }
                     }
                 },
@@ -157,15 +165,17 @@ internal fun SearchCard() {
     }
 }
 
+// Takes plain stable parameters instead of reaching for the ViewModel itself, so it
+// owns no state, is skipped on recomposition when its genre is not the one that changed,
+// and no longer needs a coroutine collector per item.
 @Composable
-private fun FilterItem(showGenre: SearchViewModel.ShowGenre) {
-    val searchViewModel = koinViewModel<SearchViewModel>()
-    val isSelected by showGenre.isSelected.collectAsStateWithLifecycle()
+private fun FilterItem(
+    genre: MovieGenre,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
-        modifier = Modifier.clickable {
-            showGenre.isSelected.value = !isSelected
-            searchViewModel.selectGenre(showGenre)
-        }.fillMaxWidth(),
+        modifier = Modifier.clickable(onClick = onClick).fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Spacer(size8Modifier)
@@ -181,7 +191,7 @@ private fun FilterItem(showGenre: SearchViewModel.ShowGenre) {
         }
         Spacer(size8Modifier)
         Text(
-            text = showGenre.genre.name,
+            text = genre.name,
             modifier = Modifier.padding(4.dp),
             color = mainTitleColor,
             fontSize = 16.sp,

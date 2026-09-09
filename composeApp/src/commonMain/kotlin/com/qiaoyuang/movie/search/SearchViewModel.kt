@@ -14,8 +14,6 @@ import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.atomicfu.atomic
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
@@ -73,8 +71,14 @@ internal class SearchViewModel(
         initialValue = 1,
     )
 
-    private val selectedGenres = HashSet<Int>()
-    private val genreFilterFlow = MutableStateFlow(selectedGenres.toSet())
+    // The genre catalogue. Fetched once by prepareGenreList(); its list reference
+    // stays the same afterwards, so toggling a filter never rebuilds it.
+    private val genresFlow = MutableStateFlow<List<MovieGenre>>(emptyList())
+
+    // Single source of truth for the selected genres. Both the filter pipeline below
+    // and the checkmarks in the UI are derived from this one set, so they cannot
+    // drift apart. Only the ViewModel ever writes to it.
+    private val selectedGenreIdsFlow = MutableStateFlow<Set<Int>>(emptySet())
 
     private val pageLimit = atomic(Int.MAX_VALUE)
 
@@ -100,7 +104,7 @@ internal class SearchViewModel(
                 emit(pageDataState)
             }
         }
-        .combine(genreFilterFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
+        .combine(selectedGenreIdsFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
         .scan(ScanState(defaultDataWithState)) { (_, accumulatedFullData, prevPageDataState), (pageDataState, set) ->
             val (page, newResults, state) = pageDataState
             val pageDataChanged = pageDataState !== prevPageDataState
@@ -134,22 +138,19 @@ internal class SearchViewModel(
         restoreSelectedGenres()
         savedStateHandle.setSavedStateProvider(RESTORED_SAVED_STATE) {
             savedState {
-                putIntList(RESTORED_SELECTED_GENRES, genreFilterFlow.value.toList())
+                putIntList(RESTORED_SELECTED_GENRES, selectedGenreIdsFlow.value.toList())
             }
         }
     }
 
     private fun restoreSelectedGenres() {
+        // Bug fix: this used to read key RESTORED_SELECTED_GENRES, while the provider
+        // above writes the SavedState under RESTORED_SAVED_STATE, so the lookup always
+        // returned null and the selection was never actually restored.
         savedStateHandle
-            .get<SavedState>(RESTORED_SELECTED_GENRES)
-            ?.read {
-                getIntList(RESTORED_SELECTED_GENRES)
-                    .takeIf { it.isNotEmpty() }
-                    ?.let {
-                        selectedGenres.addAll(it)
-                        genreFilterFlow.value = selectedGenres.toSet()
-                    }
-            }
+            .get<SavedState>(RESTORED_SAVED_STATE)
+            ?.read { getIntList(RESTORED_SELECTED_GENRES) }
+            ?.let { selectedGenreIdsFlow.value = it.toSet() }
     }
 
     fun search(word: String) {
@@ -163,35 +164,49 @@ internal class SearchViewModel(
         pageStateFlow.value++
     }
 
-    data class ShowGenre(
-        val genre: MovieGenre,
-        val isSelected: MutableStateFlow<Boolean> = MutableStateFlow(false),
+    /**
+     * Immutable snapshot of the genre filter. The catalogue and the selection are kept
+     * as separate fields on purpose: toggling a genre allocates only a new Set, while
+     * [genres] keeps the same reference, so the item list is never rebuilt.
+     *
+     * Previously each item carried its own MutableStateFlow<Boolean>, which the UI wrote
+     * to directly. That was a second copy of the selection state, and it was the one the
+     * checkmarks read from — so after process death the restored filter applied to the
+     * results while every checkbox rendered as unchecked. There is now only one copy.
+     */
+    data class GenreFilterState(
+        val genres: List<MovieGenre> = emptyList(),
+        val selectedIds: Set<Int> = emptySet(),
     )
 
-    val showGenreList: StateFlow<List<ShowGenre>>
-        field = MutableStateFlow(emptyList<ShowGenre>())
+    val genreFilterState: StateFlow<GenreFilterState> =
+        combine(genresFlow, selectedGenreIdsFlow, ::GenreFilterState)
+            .stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)),
+                initialValue = GenreFilterState(),
+            )
 
     fun prepareGenreList(): Job? {
-        if (showGenreList.value.isNotEmpty())
+        if (genresFlow.value.isNotEmpty())
             return null
         return viewModelScope.launch {
-            showGenreList.value = when (val result = repository.getMovieGenreList()) {
-                is Result.Success<List<MovieGenre>> -> result.data.map { ShowGenre(it) }
+            genresFlow.value = when (val result = repository.getMovieGenreList()) {
+                is Result.Success<List<MovieGenre>> -> result.data
                 is Result.Error<String> -> emptyList()
             }
         }
     }
 
-    private val genreMutex = Mutex()
-
-    fun selectGenre(genre: ShowGenre) = viewModelScope.launch {
-        genreMutex.withLock {
-            if (genre.isSelected.value) {
-                selectedGenres.add(genre.genre.id)
-            } else {
-                selectedGenres.remove(genre.genre.id)
-            }
-            genreFilterFlow.value = selectedGenres.toSet()
-        }
+    /**
+     * The only way the selection changes. The UI reports a click and reads the result
+     * back from [genreFilterState]; it no longer mutates any state itself.
+     *
+     * update() is an atomic compare-and-set loop, so the read-modify-write is safe
+     * without the Mutex this used to need (that Mutex could not help anyway, because
+     * the "read" half used to happen in the UI).
+     */
+    fun toggleGenre(genreId: Int) = selectedGenreIdsFlow.update { selected ->
+        if (genreId in selected) selected - genreId else selected + genreId
     }
 }
