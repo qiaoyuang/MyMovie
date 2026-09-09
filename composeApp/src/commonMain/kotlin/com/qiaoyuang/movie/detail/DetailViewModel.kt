@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.qiaoyuang.movie.domain.SimilarMovieUseCase
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
-import com.qiaoyuang.movie.model.SimilarMovieShowModel
+import com.qiaoyuang.movie.domain.SimilarMovieShowModel
 import com.qiaoyuang.movie.model.domain.Movie
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow

@@ -1,7 +1,7 @@
 package com.qiaoyuang.movie.test
 
 import app.cash.turbine.turbineScope
-import com.qiaoyuang.movie.model.ui.UIEvent
+import com.qiaoyuang.movie.basicui.UIEvent
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test

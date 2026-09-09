@@ -1,4 +1,4 @@
-package com.qiaoyuang.movie.model.ui
+package com.qiaoyuang.movie.basicui
 
 sealed interface UIEvent {
 

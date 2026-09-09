@@ -4,7 +4,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
-import com.qiaoyuang.movie.model.ui.UIEvent
 import kotlinx.coroutines.flow.Flow
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.load_more_failed

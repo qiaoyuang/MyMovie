@@ -3,8 +3,6 @@ package com.qiaoyuang.movie.domain
 import androidx.collection.IntObjectMap
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
-import com.qiaoyuang.movie.model.SimilarMovieShowModel
-import com.qiaoyuang.movie.model.convertToSimilarMovieShowModel
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.async

@@ -1,4 +1,4 @@
-package com.qiaoyuang.movie.model
+package com.qiaoyuang.movie.domain
 
 import androidx.collection.IntObjectMap
 import com.qiaoyuang.movie.model.domain.Movie
@@ -12,10 +12,10 @@ internal data class SimilarMovieShowModel(
 )
 
 /**
- * Convert ApiFilm to SimilarMovieShowModel
- * @receiver: An ApiFilm object that will be converted
+ * Convert a domain Movie to SimilarMovieShowModel
+ * @receiver: A Movie object that will be converted
  * @param genres: A genre map (key: index, value: genre name)
- * @return: A SimilarMovieShowModel object from ApiFilm
+ * @return: A SimilarMovieShowModel object from Movie
  */
 internal infix fun Movie.convertToSimilarMovieShowModel(genres: IntObjectMap<String>): SimilarMovieShowModel {
     val genresStr = buildString {

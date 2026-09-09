@@ -6,7 +6,7 @@ import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
-import com.qiaoyuang.movie.model.ui.UIEvent
+import com.qiaoyuang.movie.basicui.UIEvent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow

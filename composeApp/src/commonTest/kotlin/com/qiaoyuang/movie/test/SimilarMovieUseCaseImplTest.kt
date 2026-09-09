@@ -4,7 +4,7 @@ import androidx.collection.IntObjectMap
 import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
-import com.qiaoyuang.movie.model.SimilarMovieShowModel
+import com.qiaoyuang.movie.domain.SimilarMovieShowModel
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.coroutines.test.runTest

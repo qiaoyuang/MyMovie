@@ -26,7 +26,7 @@ import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.detail.DetailViewModel.MovieDetailState
 import com.qiaoyuang.movie.home.Ratting
 import com.qiaoyuang.movie.model.APIService
-import com.qiaoyuang.movie.model.SimilarMovieShowModel
+import com.qiaoyuang.movie.domain.SimilarMovieShowModel
 import com.qiaoyuang.movie.model.domain.Movie
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.movie_detail
