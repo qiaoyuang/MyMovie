@@ -119,6 +119,7 @@ kotlin {
             implementation(libs.compose.ui.tooling.preview)
             implementation(libs.androidx.core.ktx)
             implementation(libs.androidx.appcompat)
+            implementation(libs.androidx.startup.runtime)
             implementation(libs.androidx.activity.compose)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.koin.android)
