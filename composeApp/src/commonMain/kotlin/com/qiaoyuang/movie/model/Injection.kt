@@ -21,8 +21,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.parameter.parametersOf
-import org.koin.dsl.KoinAppDeclaration
-import org.koin.dsl.koinConfiguration
+import org.koin.core.context.startKoin
 import org.koin.dsl.module
 
 @OptIn(ExperimentalSerializationApi::class)
@@ -68,8 +67,14 @@ internal val mainModule = module {
     viewModel { SimilarMoviesViewModel(get(), it.get()) }
 }
 
-internal val GlobalKoinApplicationConfig: KoinAppDeclaration = {
-    modules(mainModule, navigationModule)
+/**
+ * Starts the Koin container. Each platform's entry point calls this instead of the App()
+ * composable doing it, so the graph also exists on code paths that never build any UI —
+ * an AppFunction call binds a service in the app's process without creating an Activity,
+ * and previously the container simply did not exist there.
+ */
+fun initKoin() {
+    startKoin {
+        modules(mainModule, navigationModule)
+    }
 }
-
-internal val GlobalKoinConfiguration = koinConfiguration(GlobalKoinApplicationConfig)

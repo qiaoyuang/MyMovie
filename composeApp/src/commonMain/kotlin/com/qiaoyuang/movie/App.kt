@@ -25,12 +25,10 @@ import com.qiaoyuang.movie.basicui.MovieTheme
 import com.qiaoyuang.movie.basicui.backgroundColor
 import com.qiaoyuang.movie.detail.Detail
 import com.qiaoyuang.movie.home.Home
-import com.qiaoyuang.movie.model.GlobalKoinConfiguration
 import com.qiaoyuang.movie.search.Search
 import com.qiaoyuang.movie.similar.SimilarMovies
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.polymorphic
-import org.koin.compose.KoinApplication
 import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.dsl.module
@@ -38,22 +36,22 @@ import org.koin.dsl.navigation3.navigation
 
 @Composable
 fun App() {
-    KoinApplication(GlobalKoinConfiguration) {
-        MovieTheme {
-            NavBackStackScope {
-                MaterialTheme {
-                    val backStack = LocalNavBackStack.current
-                    NavDisplay(
-                        backStack = backStack,
-                        modifier = Modifier.background(backgroundColor),
-                        onBack = { backStack.removeLastOrNull() },
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                        ),
-                        entryProvider = koinEntryProvider(),
-                    )
-                }
+    // No Koin wrapper here on purpose: initKoin() has already started the container, and
+    // koin-compose falls back to the global instance (KoinContext is deprecated for this).
+    MovieTheme {
+        NavBackStackScope {
+            MaterialTheme {
+                val backStack = LocalNavBackStack.current
+                NavDisplay(
+                    backStack = backStack,
+                    modifier = Modifier.background(backgroundColor),
+                    onBack = { backStack.removeLastOrNull() },
+                    entryDecorators = listOf(
+                        rememberSaveableStateHolderNavEntryDecorator(),
+                        rememberViewModelStoreNavEntryDecorator(),
+                    ),
+                    entryProvider = koinEntryProvider(),
+                )
             }
         }
     }

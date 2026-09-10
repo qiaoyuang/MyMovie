@@ -8,15 +8,14 @@ import androidx.appfunctions.service.AppFunction
  */
 class MovieFunctions private constructor() {
 
-    private val bridge = MovieDataBridge.getInstance()
+    private val bridge = MovieDataBridge.instance
 
     companion object {
-        @Volatile
-        private var instance: MovieFunctions? = null
 
-        fun getInstance(): MovieFunctions = instance ?: synchronized(this) {
-            instance ?: MovieFunctions().also { instance = it }
-        }
+        // This class holds only vals and no mutable state, so a duplicate instance would be
+        // harmless — the singleton is an allocation optimisation, not a correctness mechanism.
+        // `by lazy` says that in one line instead of hand-rolling a double-checked lock.
+        val instance by lazy { MovieFunctions() }
     }
 
     /**

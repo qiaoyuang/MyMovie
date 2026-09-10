@@ -54,6 +54,7 @@ ksp {
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.koin.core)
     implementation(libs.mmkv.kotlin)
     implementation(libs.androidx.appfunctions)
     implementation(libs.androidx.appfunctions.service)
