@@ -17,7 +17,7 @@ import kotlin.test.assertTrue
 class HomeViewModelTest : BasicTest() {
 
     private fun homeViewModel(repository: MovieRepository = MockedRepository()) =
-        HomeViewModel(repository, mainThreadSurrogate)
+        HomeViewModel(repository)
 
     @Test
     fun test_getMovies() = runTest {
