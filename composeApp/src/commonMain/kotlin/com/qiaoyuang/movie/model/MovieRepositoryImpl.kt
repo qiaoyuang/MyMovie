@@ -8,6 +8,8 @@ import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.domain.toDomain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 internal class MovieRepositoryImpl(
@@ -40,27 +42,50 @@ internal class MovieRepositoryImpl(
             }
         }
 
+    /**
+     * One Mutex guards both genre caches. Reading the cache and writing it back are separated
+     * by a network call, so the read-fetch-write has to be atomic as a whole — protecting each
+     * field access on its own would still let N concurrent callers fire N requests.
+     *
+     * The lock is deliberately held across that network call: that is what makes a second
+     * caller wait and then find the cache populated. It also keeps per-caller cancellation
+     * correct, since each caller runs its own fetch in its own coroutine context — if one is
+     * cancelled mid-flight the lock is released and the next caller simply retries.
+     *
+     * A single Mutex rather than one per cache, because getMovieGenreMap() derives from the
+     * list; two locks would mean maintaining a lock ordering by hand.
+     */
+    private val genreMutex = Mutex()
+
     private var movieGenreList: Result.Success<List<MovieGenre>>? = null
-    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> = movieGenreList ?: kotlin.run {
-        val result = fetchMovieGenre()
-        if (result is Result.Success<List<MovieGenre>>)
-            movieGenreList = result
-        return result
-    }
 
     private var movieGenreMap: Result.Success<IntObjectMap<String>>? = null
-    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> = movieGenreMap ?: kotlin.run {
-        when (val result = getMovieGenreList()) {
-            is Result.Success<List<MovieGenre>> -> {
-                val data = result.data
-                val map = MutableIntObjectMap<String>(data.size)
-                data.forEach { (id, name) ->
-                    map[id] = name
+
+    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> =
+        genreMutex.withLock { loadGenreList() }
+
+    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> =
+        genreMutex.withLock {
+            movieGenreMap ?: when (val result = loadGenreList()) {
+                is Result.Success<List<MovieGenre>> -> {
+                    val data = result.data
+                    val map = MutableIntObjectMap<String>(data.size)
+                    data.forEach { (id, name) ->
+                        map[id] = name
+                    }
+                    Result.Success<IntObjectMap<String>>(map).also { movieGenreMap = it }
                 }
-                movieGenreMap = Result.Success(map)
-                movieGenreMap!!
+                is Result.Error<String> -> result
             }
-            is Result.Error<String> -> result
         }
-    }
+
+    /**
+     * Must only be called while holding [genreMutex] — kotlinx.coroutines' Mutex is not
+     * reentrant, so getMovieGenreMap() would deadlock if it went through the public getter.
+     * Failures are not cached, so a later caller retries.
+     */
+    private suspend fun loadGenreList(): Result<List<MovieGenre>, String> =
+        movieGenreList ?: fetchMovieGenre().also {
+            if (it is Result.Success<List<MovieGenre>>) movieGenreList = it
+        }
 }
