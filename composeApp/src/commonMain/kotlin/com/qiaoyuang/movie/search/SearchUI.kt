@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -17,12 +16,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.LoadState
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.home.MovieItem
 import com.qiaoyuang.movie.model.domain.MovieGenre
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.load_more_failed
 import mymovie.composeapp.generated.resources.network_problem
@@ -41,42 +40,39 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
             SearchCard()
-            val dataWithState by searchViewModel.finalResultFlow.collectAsStateWithLifecycle()
-            val (results, state) = dataWithState
-            if (results.isEmpty()) when (state) {
-                LOADING -> Loading()
-                is ERROR -> EmptyData(stringResource(Res.string.network_problem))
-                is SUCCESS -> EmptyData(stringResource(Res.string.no_result))
-            } else {
-                val scrollState = rememberLazyListState()
-                scrollState.OnBottomReached {
-                    searchViewModel.loadMore()
-                }
-                LazyColumn(
-                    modifier = fillMaxWidthModifier,
-                    state = scrollState,
-                ) {
-                    items(
-                        items = results,
-                        key = { it.id },
-                        itemContent = {
-                            MovieItem(it, navigateToDetail)
+            val movies = searchViewModel.movies.collectAsLazyPagingItems()
+            val refresh = movies.loadState.refresh
+            val append = movies.loadState.append
+
+            when {
+                refresh is LoadState.Loading -> Loading()
+                refresh is LoadState.Error -> EmptyData(stringResource(Res.string.network_problem))
+                movies.itemCount == 0 -> EmptyData(stringResource(Res.string.no_result))
+                else -> {
+                    LazyColumn(
+                        modifier = fillMaxWidthModifier,
+                        state = rememberLazyListState(),
+                    ) {
+                        items(
+                            count = movies.itemCount,
+                            key = movies.itemKey { it.id },
+                        ) { index ->
+                            movies[index]?.let { MovieItem(it, navigateToDetail) }
                             HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
-                        },
-                    )
-                    if (state is LOADING) item {
-                        LoadingMore()
+                        }
+
+                        if (append is LoadState.Loading) item {
+                            LoadingMore()
+                        }
                     }
-                }
-                val strId = when (state) {
-                    is SUCCESS if state.isNoMore -> Res.string.no_more_results
-                    is ERROR -> Res.string.load_more_failed
-                    else -> null
-                }
-                strId?.let {
-                    val snackBarMessage = stringResource(it)
-                    LaunchedEffect(Unit) {
-                        snackbarHostState.showSnackbar(message = snackBarMessage)
+
+                    val noMoreMessage = stringResource(Res.string.no_more_results)
+                    val loadMoreFailedMessage = stringResource(Res.string.load_more_failed)
+                    LaunchedEffect(append) {
+                        when {
+                            append is LoadState.Error -> snackbarHostState.showSnackbar(loadMoreFailedMessage)
+                            append.endOfPaginationReached -> snackbarHostState.showSnackbar(noMoreMessage)
+                        }
                     }
                 }
             }

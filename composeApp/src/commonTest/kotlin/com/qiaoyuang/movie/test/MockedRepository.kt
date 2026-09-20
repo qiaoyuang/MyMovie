@@ -82,7 +82,7 @@ internal class MockedRepository : MovieRepository {
     override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
         Result.Success(
             MovieResponse(
-                page = 1,
+                page = page,
                 results = generateMovies(TOTAL_RESULTS),
                 totalPages = TOTAL_PAGES,
             )

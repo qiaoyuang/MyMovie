@@ -3,62 +3,41 @@ package com.qiaoyuang.movie.search
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import androidx.paging.filter
 import androidx.savedstate.SavedState
 import androidx.savedstate.read
 import androidx.savedstate.savedState
+import com.qiaoyuang.movie.model.MOVIE_PAGE_SIZE
+import com.qiaoyuang.movie.model.MoviePagingSource
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
-import com.qiaoyuang.movie.model.domain.MovieResponse
-import kotlinx.atomicfu.atomic
-import kotlinx.coroutines.*
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
+import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 internal class SearchViewModel(
     private val repository: MovieRepository,
     private val savedStateHandle: SavedStateHandle,
-    defaultDispatcher: CoroutineDispatcher,
 ) : ViewModel() {
 
     private companion object {
         const val FLOW_SEARCH_WORD = "flow_search_word"
-        const val FLOW_PAGE_STATE = "flow_page_state"
         const val RESTORED_SAVED_STATE = "restored_saved_state"
         const val RESTORED_SELECTED_GENRES = "restored_selected_genres"
+
+        val SEARCH_DEBOUNCE = 300.milliseconds
+        val SUBSCRIPTION_TIMEOUT = 5.seconds
     }
-
-    sealed interface SearchResultState {
-
-        data object LOADING : SearchResultState
-
-        data class SUCCESS(val isNoMore: Boolean = false) : SearchResultState
-
-        data class ERROR(val message: String) : SearchResultState
-    }
-
-    private data class PageDataState(
-        val page: Int,
-        val data: List<Movie>,
-        val searchResultState: SearchResultState,
-    )
-
-    private data class ScanState(
-        val filteredData: DataWithState,
-        val accumulatedFullData: List<Movie> = emptyList(),
-        val prevPageDataState: PageDataState? = null,
-    )
-
-    data class DataWithState(
-        val data: List<Movie>,
-        val state: SearchResultState,
-    )
-
-    private val emptyList = emptyList<Movie>()
-    private val defaultDataWithState = DataWithState(emptyList, SearchResultState.SUCCESS())
-    private val defaultPageDataState = PageDataState(1, emptyList, SearchResultState.SUCCESS())
 
     val searchWordFlow: StateFlow<String>
         field = savedStateHandle.getMutableStateFlow(
@@ -66,73 +45,49 @@ internal class SearchViewModel(
             initialValue = "",
         )
 
-    private val pageStateFlow = savedStateHandle.getMutableStateFlow(
-        key = FLOW_PAGE_STATE,
-        initialValue = 1,
-    )
-
     // The genre catalogue. Fetched once by prepareGenreList(); its list reference
     // stays the same afterwards, so toggling a filter never rebuilds it.
     private val genresFlow = MutableStateFlow<List<MovieGenre>>(emptyList())
 
-    // Single source of truth for the selected genres. Both the filter pipeline below
-    // and the checkmarks in the UI are derived from this one set, so they cannot
-    // drift apart. Only the ViewModel ever writes to it.
+    // Single source of truth for the selected genres. Both the filter below and the
+    // checkmarks in the UI are derived from this one set, so they cannot drift apart.
+    // Only the ViewModel ever writes to it.
     private val selectedGenreIdsFlow = MutableStateFlow<Set<Int>>(emptySet())
 
-    private val pageLimit = atomic(Int.MAX_VALUE)
-
+    /**
+     * The page cursor used to live in its own SavedStateHandle entry while the loaded pages
+     * lived in a scan() accumulator. Process death restored the cursor but not the data, so
+     * the list came back showing page five with nothing above it. Paging keeps the cursor
+     * inside LoadResult.Page, next to the data it indexes, so they can no longer diverge.
+     *
+     * cachedIn() sits *before* the genre filter on purpose: toggling a genre then re-filters
+     * the pages already in memory, while only a new search word builds a new Pager.
+     */
     @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
-    val finalResultFlow = searchWordFlow
-        .debounce(300.toDuration(DurationUnit.MILLISECONDS))
-        .combine(pageStateFlow) { word, page -> word to page }
-        .flatMapLatest { (word, page) ->
-            flow {
-                emit(PageDataState(page, emptyList, SearchResultState.LOADING))
-                if (word.isBlank()) {
-                    emit(defaultPageDataState)
-                    return@flow
-                }
-                val pageDataState = when (val result = repository.search(word, page)) {
-                    is Result.Success<MovieResponse> -> {
-                        val (_, results, totalPages) = result.data
-                        pageLimit.value = totalPages
-                        PageDataState(page, results, SearchResultState.SUCCESS(page == totalPages))
-                    }
-                    is Result.Error<String> -> PageDataState(page, emptyList, SearchResultState.ERROR(result.error))
-                }
-                emit(pageDataState)
-            }
+    val movies: Flow<PagingData<Movie>> = searchWordFlow
+        .debounce(SEARCH_DEBOUNCE)
+        .flatMapLatest { word ->
+            // A blank box asks for nothing rather than searching for the empty string.
+            if (word.isBlank())
+                flowOf(PagingData.empty())
+            else
+                Pager(
+                    config = PagingConfig(
+                        pageSize = MOVIE_PAGE_SIZE,
+                        enablePlaceholders = false,
+                    ),
+                    pagingSourceFactory = { MoviePagingSource { page -> repository.search(word, page) } },
+                ).flow
         }
-        .combine(selectedGenreIdsFlow.debounce(100.toDuration(DurationUnit.MILLISECONDS))) { pageDataState, set -> pageDataState to set }
-        .scan(ScanState(defaultDataWithState)) { (_, accumulatedFullData, prevPageDataState), (pageDataState, set) ->
-            val (page, newResults, state) = pageDataState
-            val pageDataChanged = pageDataState !== prevPageDataState
-
-            val nextFullData = if (pageDataChanged) {
-                if (page == 1) newResults else accumulatedFullData + newResults
-            } else {
-                accumulatedFullData
-            }
-
-            val nextFilteredList = if (set.isEmpty()) {
-                nextFullData
-            } else {
-                nextFullData.filter { movie ->
-                    movie.genreIds?.any { id -> set.contains(id) } == true
+        .cachedIn(viewModelScope)
+        .combine(selectedGenreIdsFlow) { pagingData, selected ->
+            if (selected.isEmpty())
+                pagingData
+            else
+                pagingData.filter {
+                    it.matchesGenres(selected)
                 }
-            }
-
-            ScanState(
-                filteredData = DataWithState(nextFilteredList, state),
-                accumulatedFullData = nextFullData,
-                prevPageDataState = pageDataState
-            )
         }
-        .map { it.filteredData }
-        .flowOn(defaultDispatcher)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)), defaultDataWithState)
-
 
     init {
         restoreSelectedGenres()
@@ -144,35 +99,21 @@ internal class SearchViewModel(
     }
 
     private fun restoreSelectedGenres() {
-        // Bug fix: this used to read key RESTORED_SELECTED_GENRES, while the provider
-        // above writes the SavedState under RESTORED_SAVED_STATE, so the lookup always
-        // returned null and the selection was never actually restored.
         savedStateHandle
             .get<SavedState>(RESTORED_SAVED_STATE)
             ?.read { getIntList(RESTORED_SELECTED_GENRES) }
             ?.let { selectedGenreIdsFlow.value = it.toSet() }
     }
 
+    /** No page to reset: flatMapLatest builds a fresh Pager, which starts at page one. */
     fun search(word: String) {
         searchWordFlow.value = word
-        pageStateFlow.value = 1
-    }
-
-    fun loadMore() {
-        if (pageStateFlow.value >= pageLimit.value)
-            return
-        pageStateFlow.value++
     }
 
     /**
-     * Immutable snapshot of the genre filter. The catalogue and the selection are kept
-     * as separate fields on purpose: toggling a genre allocates only a new Set, while
-     * [genres] keeps the same reference, so the item list is never rebuilt.
-     *
-     * Previously each item carried its own MutableStateFlow<Boolean>, which the UI wrote
-     * to directly. That was a second copy of the selection state, and it was the one the
-     * checkmarks read from — so after process death the restored filter applied to the
-     * results while every checkbox rendered as unchecked. There is now only one copy.
+     * Immutable snapshot of the genre filter. The catalogue and the selection are kept as
+     * separate fields on purpose: toggling a genre allocates only a new Set, while [genres]
+     * keeps the same reference, so the item list is never rebuilt.
      */
     data class GenreFilterState(
         val genres: List<MovieGenre> = emptyList(),
@@ -183,7 +124,7 @@ internal class SearchViewModel(
         combine(genresFlow, selectedGenreIdsFlow, ::GenreFilterState)
             .stateIn(
                 scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5000.toDuration(DurationUnit.MILLISECONDS)),
+                started = SharingStarted.WhileSubscribed(SUBSCRIPTION_TIMEOUT),
                 initialValue = GenreFilterState(),
             )
 
@@ -199,14 +140,22 @@ internal class SearchViewModel(
     }
 
     /**
-     * The only way the selection changes. The UI reports a click and reads the result
-     * back from [genreFilterState]; it no longer mutates any state itself.
-     *
-     * update() is an atomic compare-and-set loop, so the read-modify-write is safe
-     * without the Mutex this used to need (that Mutex could not help anyway, because
-     * the "read" half used to happen in the UI).
+     * The only way the selection changes. The UI reports a click and reads the result back
+     * from [genreFilterState]; it no longer mutates any state itself. update() is an atomic
+     * compare-and-set loop, so no Mutex is needed.
      */
-    fun toggleGenre(genreId: Int) = selectedGenreIdsFlow.update { selected ->
-        if (genreId in selected) selected - genreId else selected + genreId
+    fun toggleGenre(genreId: Int) {
+        selectedGenreIdsFlow.update { selected ->
+            if (genreId in selected) selected - genreId else selected + genreId
+        }
     }
 }
+
+/**
+ * Extracted from the PagingData filter so the rule itself can be unit-tested: PagingData is
+ * opaque, and paging-testing's asSnapshot does not run under runTest's virtual clock.
+ *
+ * A movie with no genreIds at all never survives a non-empty selection.
+ */
+internal fun Movie.matchesGenres(selected: Set<Int>): Boolean =
+    selected.isEmpty() || genreIds?.any { it in selected } == true

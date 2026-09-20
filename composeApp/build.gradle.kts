@@ -79,6 +79,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime)
             implementation(libs.androidx.lifecycle.runtime.compose)
 
+            implementation(libs.androidx.paging.common)
+            implementation(libs.androidx.paging.compose)
+
             implementation(libs.androidx.navigation3.ui)
             implementation(libs.androidx.lifecycle.viewmodel.navigation3)
             implementation(libs.androidx.material.adaptive.navigation3)
@@ -90,7 +93,6 @@ kotlin {
             implementation(libs.coil.ktor3)
 
             implementation(libs.ktor.core)
-            implementation(libs.ktor.cio)
             implementation(libs.ktor.negotiation)
             implementation(libs.ktor.json)
 

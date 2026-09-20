@@ -19,12 +19,6 @@ internal class DetailViewModel(
     private val movieId: Long,
 ) : ViewModel() {
 
-    /*class Factory(private val movieId: Long) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: KClass<T>, extras: CreationExtras): T =
-            DetailViewModel(MovieRepository, movieId) as T
-    }*/
-
     val movieDetailState: StateFlow<MovieDetailState>
         field = MutableStateFlow<MovieDetailState>(MovieDetailState.LOADING)
 

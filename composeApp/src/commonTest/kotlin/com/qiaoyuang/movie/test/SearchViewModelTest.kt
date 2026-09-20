@@ -3,31 +3,66 @@ package com.qiaoyuang.movie.test
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.search.SearchViewModel
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.ERROR
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.LOADING
-import com.qiaoyuang.movie.search.SearchViewModel.SearchResultState.SUCCESS
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.advanceTimeBy
+import com.qiaoyuang.movie.search.matchesGenres
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertIs
 import kotlin.test.assertTrue
-import kotlin.time.DurationUnit
-import kotlin.time.toDuration
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest : BasicTest() {
 
     private fun searchViewModel(repository: MovieRepository = MockedRepository()) =
-        SearchViewModel(repository, SavedStateHandle(), mainThreadSurrogate)
+        SearchViewModel(repository, SavedStateHandle())
 
-    private val viewModel = searchViewModel()
+    private fun movie(genreIds: List<Int>?) = Movie(
+        id = 1L,
+        title = "t",
+        overview = "o",
+        posterPath = null,
+        backdropPath = null,
+        voteAverage = null,
+        genreIds = genreIds,
+    )
+
+    @Test
+    fun test_empty_selection_matches_everything() {
+        assertTrue(movie(listOf(7)).matchesGenres(emptySet()))
+        assertTrue(movie(null).matchesGenres(emptySet()))
+    }
+
+    @Test
+    fun test_any_overlap_matches() {
+        assertTrue(movie(listOf(1, 5)).matchesGenres(setOf(5, 9)))
+        assertFalse(movie(listOf(1, 5)).matchesGenres(setOf(2, 9)))
+    }
+
+    @Test
+    fun test_movie_without_genres_never_survives_a_selection() {
+        assertFalse(movie(null).matchesGenres(setOf(1)))
+        assertFalse(movie(emptyList()).matchesGenres(setOf(1)))
+    }
+
+    @Test
+    fun test_toggleGenre_flips_the_selection() = runTest {
+        val viewModel = searchViewModel()
+        viewModel.genreFilterState.test {
+            assertEquals(emptySet(), awaitItem().selectedIds)
+            viewModel.toggleGenre(2)
+            assertEquals(setOf(2), awaitItem().selectedIds)
+            viewModel.toggleGenre(3)
+            assertEquals(setOf(2, 3), awaitItem().selectedIds)
+            viewModel.toggleGenre(2)
+            assertEquals(setOf(3), awaitItem().selectedIds)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
     @Test
     fun test_prepareGenreList() = runTest {
+        val viewModel = searchViewModel()
         viewModel.genreFilterState.test {
             assertTrue(awaitItem().genres.isEmpty())
             viewModel.prepareGenreList()?.join()
@@ -37,102 +72,13 @@ class SearchViewModelTest : BasicTest() {
     }
 
     @Test
-    fun test_search() = runTest {
-        viewModel.finalResultFlow.test {
-            val initial = awaitItem()
-            assertEquals(emptyList(), initial.data)
-            assertTrue(initial.state is SUCCESS)
-
-            viewModel.search("movie")
-            advanceTimeBy(299.toDuration(DurationUnit.MILLISECONDS))
-            expectNoEvents()
-            val loading1 = awaitItem()
-            assertEquals(emptyList(), loading1.data)
-            assertTrue(loading1.state is LOADING)
-
-            val success1 = awaitItem()
-            assertEquals(MockedRepository.TOTAL_RESULTS, success1.data.size)
-            assertFalse(assertIs<SUCCESS>(success1.state).isNoMore)
-
-            // Load pages 2–4 one at a time so the scan accumulates correctly
-            repeat(3) {
-                viewModel.loadMore()
-                skipItems(2)
-            }
-
-            // Load the last page and verify isNoMore
-            viewModel.loadMore()
-            val loading5 = awaitItem()
-            assertTrue(loading5.state is LOADING)
-            val success5 = awaitItem()
-            assertEquals(MockedRepository.TOTAL_RESULTS * MockedRepository.TOTAL_PAGES, success5.data.size)
-            assertTrue(assertIs<SUCCESS>(success5.state).isNoMore)
-
-            // loadMore past the limit is a no-op
-            viewModel.loadMore()
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun test_selectGenre() = runTest {
-        viewModel.finalResultFlow.test {
-            skipItems(1) // initial state
-
-            viewModel.search("movie")
-            skipItems(2) // loading and success: 25 movies (IDs 1–25, genreIds = [id % 3])
-
-            // Select genre 1 → movies where id%3==1: IDs 1,4,7,10,13,16,19,22,25 = 9
-            viewModel.toggleGenre(1)
-            assertEquals(9, awaitItem().data.size)
-
-            // Also select genre 2 → union adds id%3==2: IDs 2,5,8,11,14,17,20,23 = 8 more
-            viewModel.toggleGenre(2)
-            assertEquals(17, awaitItem().data.size)
-
-            // Toggle genre 1 back off → only genre 2 remains, 8 movies
-            viewModel.toggleGenre(1)
-            assertEquals(8, awaitItem().data.size)
-
-            // Toggle genre 2 back off → no filter, all 25 movies visible again
-            viewModel.toggleGenre(2)
-            assertEquals(MockedRepository.TOTAL_RESULTS, awaitItem().data.size)
-
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
-    fun test_search_error() = runTest {
-        val errorViewModel = searchViewModel(ErrorMockedRepository())
-        errorViewModel.finalResultFlow.test {
-            val initial = awaitItem()
-            assertEquals(emptyList(), initial.data)
-            assertTrue(initial.state is SUCCESS)
-
-            errorViewModel.search("movie")
-            advanceTimeBy(299.toDuration(DurationUnit.MILLISECONDS))
-            val loading = awaitItem()
-            assertEquals(emptyList(), loading.data)
-            assertTrue(loading.state is LOADING)
-
-            val error = awaitItem()
-            assertEquals(emptyList(), error.data)
-            assertEquals(ErrorMockedRepository.ERROR_MESSAGE, assertIs<ERROR>(error.state).message)
-
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
-    @Test
     fun test_prepareGenreList_error() = runTest {
-        val errorViewModel = searchViewModel(ErrorMockedRepository())
-        errorViewModel.genreFilterState.test {
+        val viewModel = searchViewModel(ErrorMockedRepository())
+        viewModel.genreFilterState.test {
             assertTrue(awaitItem().genres.isEmpty())
-            errorViewModel.prepareGenreList()?.join()
+            viewModel.prepareGenreList()?.join()
             // A failed fetch leaves the catalogue empty, so no new state is emitted
             expectNoEvents()
         }
     }
-
 }

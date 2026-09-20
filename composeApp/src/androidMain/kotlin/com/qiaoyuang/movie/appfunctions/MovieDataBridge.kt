@@ -5,8 +5,6 @@ import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
 
@@ -34,13 +32,11 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
         val instance by lazy { MovieDataBridge(get()) }
     }
 
-    suspend fun searchMovies(query: String, page: Int): List<MovieData>? = withContext(Dispatchers.IO) {
+    suspend fun searchMovies(query: String, page: Int): List<MovieData>? =
         repository.search(query, page).toMovieData()
-    }
 
-    suspend fun getTopRatedMovies(page: Int): List<MovieData>? = withContext(Dispatchers.IO) {
+    suspend fun getTopRatedMovies(page: Int): List<MovieData>? =
         repository.fetchTopRated(page).toMovieData()
-    }
 
     suspend fun getSimilarMovies(movieId: Long, page: Int): List<MovieData>? =
         repository.similarMovies(movieId, page).toMovieData()

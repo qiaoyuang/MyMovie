@@ -32,6 +32,14 @@ internal class MovieRepositoryImpl(
     override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
         wrap { service.search(word, page).toDomain() }
 
+    /**
+     * Ktor's engines do their own network I/O on their own threads, but the response pipeline
+     * does not switch dispatchers: KotlinxSerializationConverter.deserialize() decodes on
+     * whatever context calls body(). Measured on a desktop JVM, decoding one 12 KB TMDB page
+     * costs ~55us against ~0.5us for toDomain() — so the parse, not the mapping, is what has
+     * to stay off the main thread. Default rather than IO because none of this blocks; the
+     * thread is released back to the pool while the request is suspended.
+     */
     private suspend inline fun <T> wrap(crossinline fetch: suspend () -> T): Result<T, String> =
         withContext(defaultDispatcher) {
             try {
