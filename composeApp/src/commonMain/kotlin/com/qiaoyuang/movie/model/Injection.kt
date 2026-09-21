@@ -68,12 +68,13 @@ internal val mainModule = module {
 }
 
 /**
- * Starts the Koin container. Each platform's entry point calls this instead of the App()
- * composable doing it, so the graph also exists on code paths that never build any UI —
- * an AppFunction call binds a service in the app's process without creating an Activity,
- * and previously the container simply did not exist there.
+ * Starts the Koin container. Reached only through each platform's setupApp(), which the app
+ * entry points call instead of the App() composable doing it, so the graph also exists on code
+ * paths that never build any UI — an AppFunction call binds a service in the app's process
+ * without creating an Activity. Internal so an entry point cannot start Koin while skipping
+ * the rest of setupApp().
  */
-fun initKoin() {
+internal fun initKoin() {
     startKoin {
         modules(mainModule, navigationModule)
     }

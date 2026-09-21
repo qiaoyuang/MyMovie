@@ -3,7 +3,7 @@ import SwiftUI
 @main
 struct iOSApp: App {
     init() {
-        MainViewControllerKt.setupKoin()
+        AppSetupKt.setupApp()
     }
 
     var body: some Scene {
