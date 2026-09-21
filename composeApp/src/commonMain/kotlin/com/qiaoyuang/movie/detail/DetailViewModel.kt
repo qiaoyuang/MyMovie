@@ -12,6 +12,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import com.qiaoyuang.movie.model.MovieDataException
+import com.qiaoyuang.movie.basicui.ErrorKind
+import com.qiaoyuang.movie.basicui.toErrorKind
 
 internal class DetailViewModel(
     private val repository: MovieRepository,
@@ -33,7 +36,7 @@ internal class DetailViewModel(
                 movie = detailResult.data,
                 similarMovies = (similarMovieResult as? Result.Success<List<SimilarMovieShowModel>?>)?.data,
             )
-            is Result.Error<String> -> MovieDetailState.ERROR(detailResult.error)
+            is Result.Error<MovieDataException> -> MovieDetailState.ERROR(detailResult.error.toErrorKind())
         }
     }
 
@@ -45,6 +48,8 @@ internal class DetailViewModel(
             val similarMovies: List<SimilarMovieShowModel>?,
         ) : MovieDetailState
 
-        data class ERROR(val message: String) : MovieDetailState
+        // Carries a UI-level classification, not the exception: the Throwable stops at the
+        // ViewModel, per the architecture guide.
+        data class ERROR(val kind: ErrorKind) : MovieDetailState
     }
 }

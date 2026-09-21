@@ -8,9 +8,6 @@ import com.qiaoyuang.movie.model.domain.MovieResponse
 /** TMDB returns a fixed 20 results per page and ignores any page-size parameter. */
 internal const val MOVIE_PAGE_SIZE = 20
 
-/** Paging reports failures as throwables, so the repository's error string is wrapped here. */
-internal class MovieLoadException(override val message: String) : Exception(message)
-
 /**
  * Drives any of TMDB's page-numbered movie list endpoints. Top-rated, similar-movies and
  * search all answer with the same [MovieResponse] shape and differ only in which repository
@@ -20,7 +17,7 @@ internal class MovieLoadException(override val message: String) : Exception(mess
  * which is what makes it impossible for the cursor and the loaded data to drift apart.
  */
 internal class MoviePagingSource(
-    private val fetchPage: suspend (page: Int) -> Result<MovieResponse, String>,
+    private val fetchPage: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
 ) : PagingSource<Int, Movie>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Movie> {
@@ -38,7 +35,9 @@ internal class MoviePagingSource(
                 // would otherwise break pagination.
                 nextKey = if (page < result.data.totalPages) page + 1 else null,
             )
-            is Result.Error<String> -> LoadResult.Error(MovieLoadException(result.error))
+            // MovieDataException is already a Throwable, so it goes to Paging unwrapped and the
+            // UI can still tell what kind of failure it was.
+            is Result.Error<MovieDataException> -> LoadResult.Error(result.error)
         }
     }
 

@@ -7,6 +7,7 @@ import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
+import com.qiaoyuang.movie.model.MovieDataException
 
 internal class MockedRepository : MovieRepository {
 
@@ -34,7 +35,7 @@ internal class MockedRepository : MovieRepository {
         }
     }
 
-    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> = Result.Success(
+    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, MovieDataException> = Result.Success(
         listOf(
             MovieGenre(1, "a"),
             MovieGenre(2, "b"),
@@ -42,14 +43,14 @@ internal class MockedRepository : MovieRepository {
         )
     )
 
-    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> {
+    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException> {
         val genres = listOf(MovieGenre(1, "a"), MovieGenre(2, "b"), MovieGenre(3, "c"))
         val map = MutableIntObjectMap<String>(genres.size)
         genres.forEach { map[it.id] = it.name }
         return Result.Success(map)
     }
 
-    override suspend fun fetchTopRated(page: Int): Result<MovieResponse, String> = Result.Success(
+    override suspend fun fetchTopRated(page: Int): Result<MovieResponse, MovieDataException> = Result.Success(
         MovieResponse(
             page = page,
             results = generateMovies(COUNT),
@@ -57,13 +58,13 @@ internal class MockedRepository : MovieRepository {
         )
     )
 
-    override suspend fun movieDetail(movieId: Long): Result<Movie, String> =
+    override suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException> =
         Result.Success(generateMovie(movieId))
 
     override suspend fun similarMovies(
         movieId: Long,
         page: Int,
-    ): Result<MovieResponse, String> = Result.Success(
+    ): Result<MovieResponse, MovieDataException> = Result.Success(
         MovieResponse(
             page = page,
             results = generateMovies(COUNT),
@@ -71,7 +72,7 @@ internal class MockedRepository : MovieRepository {
         )
     )
 
-    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, String> = Result.Success(
+    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> = Result.Success(
         listOf(
             MovieGenre(1, "a"),
             MovieGenre(2, "b"),
@@ -79,7 +80,7 @@ internal class MockedRepository : MovieRepository {
         )
     )
 
-    override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
+    override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> =
         Result.Success(
             MovieResponse(
                 page = page,

@@ -7,6 +7,7 @@ import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.get
+import com.qiaoyuang.movie.model.MovieDataException
 
 data class MovieData(
     val id: Long,
@@ -42,7 +43,7 @@ class MovieDataBridge internal constructor(private val repository: MovieReposito
         repository.similarMovies(movieId, page).toMovieData()
 }
 
-private fun Result<MovieResponse, String>.toMovieData(): List<MovieData>? =
+private fun Result<MovieResponse, MovieDataException>.toMovieData(): List<MovieData>? =
     (this as? Result.Success<MovieResponse>)?.data?.results?.map { it.toMovieData() }
 
 private fun Movie.toMovieData() = MovieData(

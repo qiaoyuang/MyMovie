@@ -116,6 +116,7 @@ kotlin {
             implementation(libs.mockative)
             implementation(libs.turbine)
             implementation(libs.androidx.paging.testing)
+            implementation(libs.ktor.mock)
         }
 
         androidMain.dependencies {

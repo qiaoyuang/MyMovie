@@ -10,6 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 /**
  * Replaces HomeViewModelTest and SimilarMovieViewModelTest. With the pagination state machine
@@ -63,7 +64,8 @@ class MoviePagingSourceTest {
     fun test_error_is_reported_as_load_error() = runTest {
         val result = topRated(ErrorMockedRepository()).load(refresh())
         val error = assertIs<PagingSource.LoadResult.Error<Int, Movie>>(result)
-        assertEquals(ErrorMockedRepository.ERROR_MESSAGE, error.throwable.message)
+        // Passed through as-is: no MovieLoadException wrapper hiding what kind of failure it was.
+        assertSame(ErrorMockedRepository.ERROR, error.throwable)
     }
 
     @Test
@@ -97,7 +99,8 @@ class MoviePagingSourceTest {
     fun test_similar_movies_error() = runTest {
         val result = similar(ErrorMockedRepository()).load(refresh())
         val error = assertIs<PagingSource.LoadResult.Error<Int, Movie>>(result)
-        assertEquals(ErrorMockedRepository.ERROR_MESSAGE, error.throwable.message)
+        // Passed through as-is: no MovieLoadException wrapper hiding what kind of failure it was.
+        assertSame(ErrorMockedRepository.ERROR, error.throwable)
     }
 
     private companion object {

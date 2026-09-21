@@ -25,7 +25,6 @@ import com.qiaoyuang.movie.home.MovieItem
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.load_more_failed
-import mymovie.composeapp.generated.resources.network_problem
 import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.no_result
 import org.jetbrains.compose.resources.stringResource
@@ -57,7 +56,7 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
 
             when {
                 refresh is LoadState.Loading -> Loading()
-                refresh is LoadState.Error -> EmptyData(stringResource(Res.string.network_problem))
+                refresh is LoadState.Error -> EmptyData(refresh.error.toErrorKind().message())
                 movies.itemCount == 0 -> EmptyData(stringResource(Res.string.no_result))
                 else -> {
                     LazyColumn(

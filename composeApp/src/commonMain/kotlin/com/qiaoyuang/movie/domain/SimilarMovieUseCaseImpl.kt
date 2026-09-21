@@ -10,6 +10,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import com.qiaoyuang.movie.model.MovieDataException
 
 internal class SimilarMovieUseCaseImpl(
     private val repository: MovieRepository,
@@ -19,9 +20,9 @@ internal class SimilarMovieUseCaseImpl(
 
     private val mutex = Mutex()
 
-    private var cache: Result<List<SimilarMovieShowModel>?, String>? = null
+    private var cache: Result<List<SimilarMovieShowModel>?, MovieDataException>? = null
 
-    override suspend operator fun invoke(): Result<List<SimilarMovieShowModel>?, String> {
+    override suspend operator fun invoke(): Result<List<SimilarMovieShowModel>?, MovieDataException> {
         mutex.withLock {
             cache?.let {
                 return it
@@ -49,8 +50,8 @@ internal class SimilarMovieUseCaseImpl(
                 }
                 result
             } else {
-                (similarMovieResult as? Result.Error<String>)
-                    ?: (genreMapResult as Result.Error<String>)
+                (similarMovieResult as? Result.Error<MovieDataException>)
+                    ?: (genreMapResult as Result.Error<MovieDataException>)
             }
         }
     }

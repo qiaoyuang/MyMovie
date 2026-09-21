@@ -82,7 +82,7 @@ internal fun Detail(
             }
             when (val detailState = detailViewModel.movieDetailState.collectAsStateWithLifecycle().value) {
                 MovieDetailState.LOADING -> Loading()
-                is MovieDetailState.ERROR -> Error { detailViewModel.updateUI() }
+                is MovieDetailState.ERROR -> Error(message = detailState.kind.message()) { detailViewModel.updateUI() }
                 is MovieDetailState.SUCCESS -> {
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         MovieDetail(detailState.movie)

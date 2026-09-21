@@ -17,19 +17,19 @@ internal class MovieRepositoryImpl(
     private val defaultDispatcher: CoroutineDispatcher,
 ) : MovieRepository {
 
-    override suspend infix fun fetchTopRated(page: Int): Result<MovieResponse, String> =
+    override suspend infix fun fetchTopRated(page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.fetchTopRated(page).toDomain() }
 
-    override suspend fun movieDetail(movieId: Long): Result<Movie, String> =
+    override suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException> =
         wrap { (service movieDetail movieId).toDomain() }
 
-    override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, String> =
+    override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.similarMovies(movieId, page).toDomain() }
 
-    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, String> =
+    override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> =
         wrap { service.fetchMovieGenre().genres.map { it.toDomain() } }
 
-    override suspend fun search(word: String, page: Int): Result<MovieResponse, String> =
+    override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.search(word, page).toDomain() }
 
     /**
@@ -40,13 +40,18 @@ internal class MovieRepositoryImpl(
      * to stay off the main thread. Default rather than IO because none of this blocks; the
      * thread is released back to the pool while the request is suspended.
      */
-    private suspend inline fun <T> wrap(crossinline fetch: suspend () -> T): Result<T, String> =
+    private suspend inline fun <T> wrap(crossinline fetch: suspend () -> T): Result<T, MovieDataException> =
         withContext(defaultDispatcher) {
             try {
                 Result.Success(fetch())
+            } catch (e: CancellationException) {
+                // Must propagate: reporting it as a failure would show an error for a load the
+                // user simply navigated away from.
+                throw e
             } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                Result.Error(e.message ?: "")
+                // Used to be Result.Error(e.message), which threw away the type and carried the
+                // request URL — api_key included — up through every layer as "the error".
+                Result.Error(e.toMovieDataException())
             }
         }
 
@@ -69,10 +74,10 @@ internal class MovieRepositoryImpl(
 
     private var movieGenreMap: Result.Success<IntObjectMap<String>>? = null
 
-    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, String> =
+    override suspend fun getMovieGenreList(): Result<List<MovieGenre>, MovieDataException> =
         genreMutex.withLock { loadGenreList() }
 
-    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> =
+    override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException> =
         genreMutex.withLock {
             movieGenreMap ?: when (val result = loadGenreList()) {
                 is Result.Success<List<MovieGenre>> -> {
@@ -83,7 +88,7 @@ internal class MovieRepositoryImpl(
                     }
                     Result.Success<IntObjectMap<String>>(map).also { movieGenreMap = it }
                 }
-                is Result.Error<String> -> result
+                is Result.Error<MovieDataException> -> result
             }
         }
 
@@ -92,7 +97,7 @@ internal class MovieRepositoryImpl(
      * reentrant, so getMovieGenreMap() would deadlock if it went through the public getter.
      * Failures are not cached, so a later caller retries.
      */
-    private suspend fun loadGenreList(): Result<List<MovieGenre>, String> =
+    private suspend fun loadGenreList(): Result<List<MovieGenre>, MovieDataException> =
         movieGenreList ?: fetchMovieGenre().also {
             if (it is Result.Success<List<MovieGenre>>) movieGenreList = it
         }

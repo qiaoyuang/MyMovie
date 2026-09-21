@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import com.qiaoyuang.movie.model.MovieDataException
 
 class SearchViewModelTest : BasicTest() {
 
@@ -45,7 +46,7 @@ class SearchViewModelTest : BasicTest() {
     ) : MovieRepository by delegate {
         val searchedPages = mutableListOf<Int>()
 
-        override suspend fun search(word: String, page: Int): Result<MovieResponse, String> {
+        override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> {
             searchedPages += page
             return delegate.search(word, page)
         }

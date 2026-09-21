@@ -13,6 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertSame
+import com.qiaoyuang.movie.model.MovieDataException
 
 class SimilarMovieUseCaseImplTest : BasicTest() {
 
@@ -35,7 +36,7 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
     @Test
     fun test_returns_null_when_all_movies_lack_poster_path() = runTest {
         val repo = object : MovieRepository by MockedRepository() {
-            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, String> =
+            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
                 Result.Success(
                     MovieResponse(
                         page = 1,
@@ -62,27 +63,27 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
 
     @Test
     fun test_returns_error_when_similar_movies_fails() = runTest {
-        val errorMessage = "Network error"
+        val failure = MovieDataException.Network(RuntimeException("Network error"))
         val repo = object : MovieRepository by MockedRepository() {
-            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, String> =
-                Result.Error(errorMessage)
+            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
+                Result.Error(failure)
         }
         val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
         val result = useCase()
-        assertIs<Result.Error<String>>(result)
-        assertEquals(errorMessage, result.error)
+        assertIs<Result.Error<MovieDataException>>(result)
+        assertSame(failure, result.error)
     }
 
     @Test
     fun test_returns_error_when_genre_map_fails() = runTest {
-        val errorMessage = "Genre fetch failed"
+        val failure = MovieDataException.Network(RuntimeException("Genre fetch failed"))
         val repo = object : MovieRepository by MockedRepository() {
-            override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String> =
-                Result.Error(errorMessage)
+            override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException> =
+                Result.Error(failure)
         }
         val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
         val result = useCase()
-        assertIs<Result.Error<String>>(result)
-        assertEquals(errorMessage, result.error)
+        assertIs<Result.Error<MovieDataException>>(result)
+        assertSame(failure, result.error)
     }
 }

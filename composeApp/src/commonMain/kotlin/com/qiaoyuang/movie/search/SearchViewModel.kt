@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import com.qiaoyuang.movie.model.MovieDataException
 
 internal class SearchViewModel(
     private val repository: MovieRepository,
@@ -143,7 +144,7 @@ internal class SearchViewModel(
         return viewModelScope.launch {
             genresFlow.value = when (val result = repository.getMovieGenreList()) {
                 is Result.Success<List<MovieGenre>> -> result.data
-                is Result.Error<String> -> emptyList()
+                is Result.Error<MovieDataException> -> emptyList()
             }
         }
     }

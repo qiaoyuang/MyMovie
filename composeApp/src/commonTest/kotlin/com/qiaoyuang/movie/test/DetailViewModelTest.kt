@@ -1,6 +1,7 @@
 package com.qiaoyuang.movie.test
 
 import app.cash.turbine.test
+import com.qiaoyuang.movie.basicui.ErrorKind
 import com.qiaoyuang.movie.detail.DetailViewModel
 import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
 import com.qiaoyuang.movie.model.MovieRepository
@@ -43,7 +44,7 @@ class DetailViewModelTest : BasicTest() {
             assertIs<DetailViewModel.MovieDetailState.LOADING>(awaitItem())
             viewModel.updateUI()
             val error = assertIs<DetailViewModel.MovieDetailState.ERROR>(awaitItem())
-            assertEquals(ErrorMockedRepository.ERROR_MESSAGE, error.message)
+            assertEquals(ErrorKind.Network, error.kind)
             cancelAndIgnoreRemainingEvents()
         }
     }

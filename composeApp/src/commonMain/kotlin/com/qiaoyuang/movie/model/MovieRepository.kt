@@ -9,17 +9,17 @@ import io.mockative.Mockable
 @Mockable
 internal interface MovieRepository {
 
-    suspend infix fun fetchTopRated(page: Int = 1): Result<MovieResponse, String>
+    suspend infix fun fetchTopRated(page: Int = 1): Result<MovieResponse, MovieDataException>
 
-    suspend fun movieDetail(movieId: Long): Result<Movie, String>
+    suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException>
 
-    suspend fun similarMovies(movieId: Long, page: Int = 1): Result<MovieResponse, String>
+    suspend fun similarMovies(movieId: Long, page: Int = 1): Result<MovieResponse, MovieDataException>
 
-    suspend fun fetchMovieGenre(): Result<List<MovieGenre>, String>
+    suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException>
 
-    suspend fun search(word: String, page: Int): Result<MovieResponse, String>
+    suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException>
 
-    suspend fun getMovieGenreList(): Result<List<MovieGenre>, String>
+    suspend fun getMovieGenreList(): Result<List<MovieGenre>, MovieDataException>
 
-    suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, String>
+    suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException>
 }

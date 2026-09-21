@@ -93,7 +93,7 @@ internal fun Home(
 
             when {
                 refresh is LoadState.Loading -> Loading()
-                refresh is LoadState.Error -> Error { movies.retry() }
+                refresh is LoadState.Error -> Error(message = refresh.error.toErrorKind().message()) { movies.retry() }
                 movies.itemCount == 0 -> EmptyData(stringResource(Res.string.no_result))
                 else -> {
                     LazyColumn(
