@@ -72,10 +72,7 @@ internal class SearchViewModel(
                 flowOf(PagingData.empty())
             else
                 Pager(
-                    config = PagingConfig(
-                        pageSize = MOVIE_PAGE_SIZE,
-                        enablePlaceholders = false,
-                    ),
+                    config = PagingConfig(pageSize = MOVIE_PAGE_SIZE, enablePlaceholders = false),
                     pagingSourceFactory = { MoviePagingSource { page -> repository.search(word, page) } },
                 ).flow
         }

@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -39,7 +40,17 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues)) {
-            SearchCard()
+            // The screen-level composable is the only one that touches the ViewModel: it reads
+            // state and forwards events, so SearchCard below is a plain function of its inputs.
+            val searchWord by searchViewModel.searchWordFlow.collectAsStateWithLifecycle()
+            val genreFilterState by searchViewModel.genreFilterState.collectAsStateWithLifecycle()
+            SearchCard(
+                searchWord = searchWord,
+                onSearchWordChange = { searchViewModel.search(it) },
+                genreFilterState = genreFilterState,
+                onFilterMenuOpen = { searchViewModel.prepareGenreList() },
+                onToggleGenre = { searchViewModel.toggleGenre(it) },
+            )
             val movies = searchViewModel.movies.collectAsLazyPagingItems()
             val refresh = movies.loadState.refresh
             val append = movies.loadState.append
@@ -80,9 +91,23 @@ internal fun Search(navigateToDetail: (id: Long) -> Unit) {
     }
 }
 
+/**
+ * Receives state and reports events instead of fetching SearchViewModel itself. It still
+ * resolved the right instance before — only because it happened to sit under the same
+ * ViewModelStoreOwner as Search() — but it could not be previewed or tested without a Koin
+ * container, and its empty signature hid every one of those dependencies.
+ *
+ * Whether the genre menu is open stays local: that is UI element state, which nothing
+ * outside this composable needs to read or survive.
+ */
 @Composable
-internal fun SearchCard() {
-    val searchViewModel = koinViewModel<SearchViewModel>()
+private fun SearchCard(
+    searchWord: String,
+    onSearchWordChange: (String) -> Unit,
+    genreFilterState: SearchViewModel.GenreFilterState,
+    onFilterMenuOpen: () -> Unit,
+    onToggleGenre: (genreId: Int) -> Unit,
+) {
     Column(modifier = horizontalPadding8Modifier) {
         OutlinedCard(
             onClick = {},
@@ -91,13 +116,9 @@ internal fun SearchCard() {
             colors = CardDefaults.outlinedCardColors(containerColor = surfaceColor),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
         ) {
-            val searchWordFlow = searchViewModel.searchWordFlow
-            val searchWord by searchWordFlow.collectAsStateWithLifecycle()
             TextField(
                 value = searchWord,
-                onValueChange = {
-                    searchViewModel.search(it)
-                },
+                onValueChange = onSearchWordChange,
                 modifier = fillMaxWidthModifier,
                 leadingIcon = {
                     Icon(
@@ -112,7 +133,7 @@ internal fun SearchCard() {
                     IconButton(
                         onClick = {
                             openDropDownMenu = true
-                            searchViewModel.prepareGenreList()
+                            onFilterMenuOpen()
                         },
                     ) {
                         Icon(
@@ -122,7 +143,6 @@ internal fun SearchCard() {
                             modifier = size24Modifier
                         )
                     }
-                    val genreFilterState by searchViewModel.genreFilterState.collectAsStateWithLifecycle()
                    DropdownMenu(
                         expanded = openDropDownMenu,
                         onDismissRequest = {
@@ -137,7 +157,7 @@ internal fun SearchCard() {
                            FilterItem(
                                genre = genre,
                                isSelected = genre.id in genreFilterState.selectedIds,
-                               onClick = { searchViewModel.toggleGenre(genre.id) },
+                               onClick = { onToggleGenre(genre.id) },
                            )
                        }
                     }
@@ -194,6 +214,34 @@ private fun FilterItem(
             lineHeight = 20.sp,
         )
         Spacer(size8Modifier)
+    }
+}
+
+@Preview
+@Composable
+private fun SearchCardPreview() {
+    MovieTheme {
+        SearchCard(
+            searchWord = "Inception",
+            onSearchWordChange = {},
+            genreFilterState = SearchViewModel.GenreFilterState(
+                genres = listOf(MovieGenre(28, "Action"), MovieGenre(878, "Science Fiction")),
+                selectedIds = setOf(878),
+            ),
+            onFilterMenuOpen = {},
+            onToggleGenre = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun FilterItemPreview() {
+    MovieTheme {
+        Column {
+            FilterItem(genre = MovieGenre(28, "Action"), isSelected = false, onClick = {})
+            FilterItem(genre = MovieGenre(878, "Science Fiction"), isSelected = true, onClick = {})
+        }
     }
 }
 
