@@ -7,5 +7,5 @@ target 'iosApp' do
 
   # Pods for iosApp
   pod 'ComposeApp', :path => '../composeApp'
-  pod 'MMKV', '2.2.2'
+  pod 'MMKV', '2.4.2'
 end
