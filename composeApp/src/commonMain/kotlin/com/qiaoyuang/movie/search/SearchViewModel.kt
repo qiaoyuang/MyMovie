@@ -4,6 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
@@ -36,6 +38,16 @@ internal class SearchViewModel(
         const val RESTORED_SELECTED_GENRES = "restored_selected_genres"
 
         val SEARCH_DEBOUNCE = 300.milliseconds
+
+        // The no-arg PagingData.empty() carries null load states, so a presenter receiving it
+        // never learns that loading is over: LazyPagingItems can keep showing the previous
+        // search's Loading, and paging-testing's asSnapshot waits forever. Stating explicitly
+        // that the list is idle and complete in both directions settles it.
+        val BLANK_WORD_LOAD_STATES = LoadStates(
+            refresh = LoadState.NotLoading(endOfPaginationReached = false),
+            prepend = LoadState.NotLoading(endOfPaginationReached = true),
+            append = LoadState.NotLoading(endOfPaginationReached = true),
+        )
         val SUBSCRIPTION_TIMEOUT = 5.seconds
     }
 
@@ -69,7 +81,7 @@ internal class SearchViewModel(
         .flatMapLatest { word ->
             // A blank box asks for nothing rather than searching for the empty string.
             if (word.isBlank())
-                flowOf(PagingData.empty())
+                flowOf(PagingData.empty(sourceLoadStates = BLANK_WORD_LOAD_STATES))
             else
                 Pager(
                     config = PagingConfig(pageSize = MOVIE_PAGE_SIZE, enablePlaceholders = false),

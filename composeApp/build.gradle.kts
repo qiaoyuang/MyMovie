@@ -115,6 +115,7 @@ kotlin {
             implementation(libs.koin.test)
             implementation(libs.mockative)
             implementation(libs.turbine)
+            implementation(libs.androidx.paging.testing)
         }
 
         androidMain.dependencies {

@@ -64,6 +64,7 @@ androidx-annotation = { group = "androidx.annotation", name = "annotation", vers
 androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidx-startup" }
 androidx-paging-common = { group = "androidx.paging", name = "paging-common", version.ref = "androidx-paging" }
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "androidx-paging" }
+androidx-paging-testing = { group = "androidx.paging", name = "paging-testing", version.ref = "androidx-paging" }
 
 androidx-appfunctions = { group = "androidx.appfunctions", name = "appfunctions", version.ref = "androidx-appfunction" }
 androidx-appfunctions-service = { group = "androidx.appfunctions", name = "appfunctions-service", version.ref = "androidx-appfunction-service" }
