@@ -24,7 +24,7 @@ internal class MockedRepository : MovieRepository {
         overview = "abc",
         posterPath = "https://xyz",
         backdropPath = "https://uvw",
-        voteAverage = id.toDouble().toString(),
+        voteAverage = id.toDouble(),
         genreIds = listOf(id.toInt() % 3),
     )
 

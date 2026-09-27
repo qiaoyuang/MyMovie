@@ -10,7 +10,7 @@ internal data class ApiMovieDTO(
     val overview: String,
     @SerialName("poster_path") val posterPath: String?,
     @SerialName("backdrop_path") val backdropPath: String?,
-    @SerialName("vote_average") val voteAverage: String?,
+    @SerialName("vote_average") val voteAverage: Double?,
     @SerialName("genre_ids") val genreIds: List<Int>?,
 )
 

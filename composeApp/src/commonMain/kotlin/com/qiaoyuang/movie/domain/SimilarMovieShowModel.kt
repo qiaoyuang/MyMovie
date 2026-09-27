@@ -8,7 +8,7 @@ internal data class SimilarMovieShowModel(
     val title: String,
     val genres: String,
     val posterPath: String?,
-    val voteAverage: String?
+    val voteAverage: Double?
 )
 
 /**

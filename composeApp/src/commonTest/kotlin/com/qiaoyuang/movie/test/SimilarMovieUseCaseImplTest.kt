@@ -47,7 +47,7 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
                                 overview = "abc",
                                 posterPath = null,
                                 backdropPath = null,
-                                voteAverage = "1.0",
+                                voteAverage = 1.0,
                                 genreIds = null,
                             )
                         ),

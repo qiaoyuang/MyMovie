@@ -6,6 +6,6 @@ internal data class Movie(
     val overview: String,
     val posterPath: String?,
     val backdropPath: String?,
-    val voteAverage: String?,
+    val voteAverage: Double?,
     val genreIds: List<Int>?,
 )

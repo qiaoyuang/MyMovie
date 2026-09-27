@@ -36,6 +36,7 @@ import mymovie.composeapp.generated.resources.no_result
 import mymovie.composeapp.generated.resources.top_movies
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -172,7 +173,7 @@ internal fun MovieItem(data: Movie, navigateToDetail: (id: Long) -> Unit) {
 }
 
 @Composable
-internal fun Ratting(voteAverage: String?) {
+internal fun Ratting(voteAverage: Double?) {
     Row(modifier = getRattingModifier(), verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = rattingStar,
@@ -182,12 +183,21 @@ internal fun Ratting(voteAverage: String?) {
         )
         Spacer(width6Modifier)
         Text(
-            text = voteAverage ?: "0.0",
+            text = voteAverage.formatRating(),
             color = lightContentColor,
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
     }
+}
+
+/**
+ * TMDB sends ratings like 8.706; show a single decimal. Kotlin common has no String.format,
+ * so round to one decimal manually. A missing rating reads as 0.0, as it did before.
+ */
+private fun Double?.formatRating(): String {
+    val value = this ?: 0.0
+    return ((value * 10).roundToInt() / 10.0).toString()
 }
 
 @Composable

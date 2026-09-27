@@ -30,7 +30,7 @@ class DetailViewModelTest : BasicTest() {
             assertEquals("abc", success.movie.overview)
             assertEquals("https://xyz", success.movie.posterPath)
             assertEquals("https://uvw", success.movie.backdropPath)
-            assertEquals(1.0.toString(), success.movie.voteAverage)
+            assertEquals(1.0, success.movie.voteAverage)
             assertEquals(1 % 3, success.movie.genreIds?.first())
             assertEquals(MockedRepository.COUNT, success.similarMovies?.size)
             cancelAndIgnoreRemainingEvents()

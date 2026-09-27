@@ -14,7 +14,7 @@ data class MovieInfo(
     /** Brief plot overview */
     val overview: String,
     /** Average audience rating out of 10, or null if unavailable */
-    val rating: String?,
+    val rating: Double?,
     /** Full poster image URL, or null if unavailable */
     val posterUrl: String?,
 )

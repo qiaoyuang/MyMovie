@@ -13,7 +13,7 @@ data class MovieData(
     val id: Long,
     val title: String,
     val overview: String,
-    val rating: String?,
+    val rating: Double?,
     val posterUrl: String?,
 )
 
