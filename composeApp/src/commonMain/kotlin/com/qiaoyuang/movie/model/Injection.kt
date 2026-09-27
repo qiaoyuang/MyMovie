@@ -7,6 +7,9 @@ import com.qiaoyuang.movie.home.HomeViewModel
 import com.qiaoyuang.movie.model.APIService.Companion.API_KEY_PARAM
 import com.qiaoyuang.movie.model.APIService.Companion.BASE_URL
 import com.qiaoyuang.movie.model.APIService.Companion.KEY
+import com.qiaoyuang.movie.model.local.MovieLocalDataSource
+import com.qiaoyuang.movie.model.local.MovieLocalDataSourceImpl
+import com.qiaoyuang.movie.model.local.createMovieDatabase
 import com.qiaoyuang.movie.navigationModule
 import com.qiaoyuang.movie.search.SearchViewModel
 import com.qiaoyuang.movie.similar.SimilarMoviesViewModel
@@ -52,6 +55,10 @@ internal val mainModule = module {
         }
     }
     single<APIService> { KtorService(get()) }
+    // One connection for the process lifetime: a sqllin Database wraps a single connection and
+    // already serialises statement execution, so re-opening per query would only add cost.
+    single { createMovieDatabase() }
+    single<MovieLocalDataSource> { MovieLocalDataSourceImpl(get(), get(GlobalDispatchers.IO)) }
     single<MovieRepository> { MovieRepositoryImpl(get(), get(GlobalDispatchers.DEFAULT)) }
     factory<SimilarMovieUseCase> { SimilarMovieUseCaseImpl(get(), get(GlobalDispatchers.DEFAULT), it.get()) }
     viewModel { HomeViewModel(get()) }

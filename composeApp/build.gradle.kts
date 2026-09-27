@@ -139,3 +139,25 @@ dependencies {
     add("kspCommonMainMetadata", libs.sqllin.processor)
     androidRuntimeClasspath(libs.compose.ui.tooling)
 }
+
+// sqllin-processor runs on the common metadata compilation and writes the generated
+// `<Entity>Table` objects here; without this srcDir they are invisible to commonMain.
+kotlin.sourceSets.commonMain {
+    kotlin.srcDir(layout.buildDirectory.dir("generated/ksp/metadata/commonMain/kotlin"))
+}
+
+// Everything downstream now reads that directory and has to wait for it: every Kotlin
+// compilation, and also the other KSP tasks (kspAndroidMain runs the AppFunctions processor over
+// sources that include it). Matched by name because the KSP task type is not stable across
+// versions.
+private val sqllinKspTask = "kspCommonMainKotlinMetadata"
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask<*>>().configureEach {
+    if (name != sqllinKspTask) {
+        dependsOn(sqllinKspTask)
+    }
+}
+
+tasks.matching { it.name.startsWith("ksp") && it.name != sqllinKspTask }.configureEach {
+    dependsOn(sqllinKspTask)
+}
