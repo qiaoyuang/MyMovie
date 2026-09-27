@@ -15,6 +15,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,36 +87,62 @@ internal fun Home(
             // Subscribing is what starts the first load; there is no getTopMovies() to call.
             val movies = homeViewModel.movies.collectAsLazyPagingItems()
 
-            // refresh describes the initial load (and any retry of it); append describes
-            // loading the next page. They are tracked separately, which is why the full-screen
-            // states below no longer have to be inferred from "is the list empty".
+            // Combined states — mediator and local source together. Now that the cache can
+            // answer first, the full-screen states have to be gated on there being nothing to
+            // show at all: a refresh with cached movies on screen used to blank out the list
+            // the user was reading.
             val refresh = movies.loadState.refresh
             val append = movies.loadState.append
+            val hasMovies = movies.itemCount > 0
+            // The mediator's own refresh, not the combined one. Every page the mediator appends
+            // invalidates the local source, and Paging answers that with a source refresh — so
+            // the combined state goes Loading whenever the user simply scrolls far enough to
+            // need another page, which is not what a pull-to-refresh indicator should report.
+            val networkRefresh = movies.loadState.mediator?.refresh
 
             when {
-                refresh is LoadState.Loading -> Loading()
-                refresh is LoadState.Error -> Error(message = refresh.error.toErrorKind().message()) { movies.retry() }
-                movies.itemCount == 0 -> EmptyData(stringResource(Res.string.no_result))
+                !hasMovies && refresh is LoadState.Loading -> Loading()
+                !hasMovies && refresh is LoadState.Error ->
+                    Error(message = refresh.error.toErrorKind().message()) { movies.retry() }
+                !hasMovies -> EmptyData(stringResource(Res.string.no_result))
                 else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxWidth(),
-                        state = rememberLazyListState(),
+                    PullToRefreshBox(
+                        isRefreshing = networkRefresh is LoadState.Loading,
+                        // Discards the cached list and re-reads page one, which is the only way
+                        // to see new movies before the seven-day TTL expires.
+                        onRefresh = movies::refresh,
                     ) {
-                        item {
-                            Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                        }
-                        // Reading movies[index] is also what tells Paging how far the user has
-                        // scrolled, so prefetching replaces the old OnBottomReached callback.
-                        items(
-                            count = movies.itemCount,
-                            key = movies.itemKey { it.id },
-                        ) { index ->
-                            movies[index]?.let { MovieItem(it, navigateToDetail) }
-                            HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
-                        }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth(),
+                            state = rememberLazyListState(),
+                        ) {
+                            item {
+                                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
+                            }
+                            // Reading movies[index] is also what tells Paging how far the user
+                            // has scrolled, so prefetching replaces the old OnBottomReached
+                            // callback.
+                            items(
+                                count = movies.itemCount,
+                                key = movies.itemKey { it.id },
+                            ) { index ->
+                                movies[index]?.let { MovieItem(it, navigateToDetail) }
+                                HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
+                            }
 
-                        if (append is LoadState.Loading) item {
-                            LoadingMore()
+                            if (append is LoadState.Loading) item {
+                                LoadingMore()
+                            }
+                        }
+                    }
+
+                    // A refresh that fails with movies on screen must not replace them with the
+                    // error screen — the cached list is still the best thing to show — so it is
+                    // reported without taking over the UI.
+                    if (networkRefresh is LoadState.Error) {
+                        val refreshFailedMessage = networkRefresh.error.toErrorKind().message()
+                        LaunchedEffect(networkRefresh) {
+                            snackbarHostState.showSnackbar(refreshFailedMessage)
                         }
                     }
 
