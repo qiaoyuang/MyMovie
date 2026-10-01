@@ -28,6 +28,7 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
     private val entriesByList = mutableMapOf<String, MutableList<MovieListEntryEntity>>()
     private val cursors = mutableMapOf<String, ListCursor>()
     private var storedGenres = emptyList<MovieGenre>()
+    private var genresRefreshedAt: Long? = null
 
     /** Counts calls, so a test can assert the cache answered instead of the network. */
     var readCount = 0
@@ -83,8 +84,17 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
 
     override suspend fun genres(): List<MovieGenre> = storedGenres
 
-    override suspend fun replaceGenres(genres: List<MovieGenre>) {
+    override suspend fun genresRefreshedAt(): Long? = genresRefreshedAt
+
+    override suspend fun replaceGenres(genres: List<MovieGenre>, refreshedAt: Long) {
         storedGenres = genres
+        genresRefreshedAt = refreshedAt
+    }
+
+    /** Seeds a cached catalogue without going through the repository. */
+    fun seedGenres(genres: List<MovieGenre>, refreshedAt: Long) {
+        storedGenres = genres
+        genresRefreshedAt = refreshedAt
     }
 
     /** Positions as stored, for asserting the ordering the PagingSource will read back. */

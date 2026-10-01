@@ -142,19 +142,31 @@ internal class MovieLocalDataSourceImpl(
         statement?.getResults()?.map(GenreEntity::toDomain).orEmpty()
     }
 
-    /** The catalogue is small and always fetched whole, so replacing it also drops retired ids. */
-    override suspend fun replaceGenres(genres: List<MovieGenre>) = withContext(ioDispatcher) {
-        writeMutex.withLock {
-            database suspendedScope {
-                transaction {
-                    GenreEntityTable { table ->
-                        table DELETE X
-                        if (genres.isNotEmpty()) table INSERT_OR_REPLACE genres.map(MovieGenre::toEntity)
+    override suspend fun genresRefreshedAt(): Long? = cursorOf(GENRES_LIST_KEY)?.lastRefreshedAt
+
+    /**
+     * The catalogue is small and always fetched whole, so replacing it also drops retired ids.
+     * The stamp goes in the same transaction: a fresh stamp with no genres behind it would stop
+     * anything from ever fetching them again.
+     */
+    override suspend fun replaceGenres(genres: List<MovieGenre>, refreshedAt: Long) =
+        withContext(ioDispatcher) {
+            writeMutex.withLock {
+                database suspendedScope {
+                    transaction {
+                        GenreEntityTable { table ->
+                            table DELETE X
+                            if (genres.isNotEmpty())
+                                table INSERT_OR_REPLACE genres.map(MovieGenre::toEntity)
+                        }
+                        writeCursor(
+                            GENRES_LIST_KEY,
+                            ListCursor(nextPage = null, totalPages = 1, lastRefreshedAt = refreshedAt),
+                        )
                     }
                 }
             }
         }
-    }
 
     /**
      * Two queries and an in-memory join instead of SQL JOINs: a sqllin JOIN needs a result class

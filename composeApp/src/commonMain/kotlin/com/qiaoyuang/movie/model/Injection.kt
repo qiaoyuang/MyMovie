@@ -59,7 +59,7 @@ internal val mainModule = module {
     // already serialises statement execution, so re-opening per query would only add cost.
     single { createMovieDatabase() }
     single<MovieLocalDataSource> { MovieLocalDataSourceImpl(get(), get(GlobalDispatchers.IO)) }
-    single<MovieRepository> { MovieRepositoryImpl(get(), get(GlobalDispatchers.DEFAULT)) }
+    single<MovieRepository> { MovieRepositoryImpl(get(), get(), get(GlobalDispatchers.DEFAULT)) }
     factory<SimilarMovieUseCase> { SimilarMovieUseCaseImpl(get(), get(GlobalDispatchers.DEFAULT), it.get()) }
     viewModel { HomeViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }

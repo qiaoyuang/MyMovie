@@ -6,22 +6,46 @@ import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.domain.toDomain
+import com.qiaoyuang.movie.model.local.MovieLocalDataSource
+import com.qiaoyuang.movie.model.local.currentTimeMillis
+import com.qiaoyuang.movie.model.local.isStale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
+/**
+ * Owns the caching policy, as the architecture guide puts it — callers ask for a movie, not for
+ * a request. Paged lists are the exception: their cache is written by MovieRemoteMediator, which
+ * is where Paging requires that decision to live.
+ */
 internal class MovieRepositoryImpl(
     private val service: APIService,
+    private val local: MovieLocalDataSource,
     private val defaultDispatcher: CoroutineDispatcher,
+    private val now: () -> Long = ::currentTimeMillis,
 ) : MovieRepository {
 
     override suspend infix fun fetchTopRated(page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.fetchTopRated(page).toDomain() }
 
-    override suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException> =
-        wrap { (service movieDetail movieId).toDomain() }
+    /**
+     * Cache first, network only on a miss. TMDB's detail endpoint returns the same payload the
+     * list endpoints do, so a movie the user reached from a list is already as good as fetched —
+     * and the cached hit is what makes this screen open with no network.
+     *
+     * Freshness rides on the lists rather than on a per-movie timestamp, because refreshing a
+     * list rewrites every movie in it. The gap that leaves: a movie only ever reached directly,
+     * without belonging to any cached list, is never re-read. Giving MovieEntity its own stamp
+     * would close it, at the cost of a column every list write has to maintain.
+     */
+    override suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException> {
+        local.movie(movieId)?.let { return Result.Success(it) }
+        val fetched = wrap { (service movieDetail movieId).toDomain() }
+        if (fetched is Result.Success<Movie>) local.upsertMovies(listOf(fetched.data))
+        return fetched
+    }
 
     override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.similarMovies(movieId, page).toDomain() }
@@ -56,49 +80,59 @@ internal class MovieRepositoryImpl(
         }
 
     /**
-     * One Mutex guards both genre caches. Reading the cache and writing it back are separated
-     * by a network call, so the read-fetch-write has to be atomic as a whole — protecting each
-     * field access on its own would still let N concurrent callers fire N requests.
+     * One Mutex guards the whole check-fetch-store. Reading the cache and writing it back are
+     * separated by a network call, so the sequence has to be atomic as a whole — guarding each
+     * step on its own would still let N concurrent callers fire N requests.
      *
-     * The lock is deliberately held across that network call: that is what makes a second
-     * caller wait and then find the cache populated. It also keeps per-caller cancellation
-     * correct, since each caller runs its own fetch in its own coroutine context — if one is
-     * cancelled mid-flight the lock is released and the next caller simply retries.
+     * The lock is deliberately held across that call: that is what makes a second caller wait
+     * and then find the catalogue already there. Per-caller cancellation stays correct, because
+     * each caller runs its own fetch in its own context — if one is cancelled mid-flight the
+     * lock is released and the next caller simply retries.
      *
-     * A single Mutex rather than one per cache, because getMovieGenreMap() derives from the
-     * list; two locks would mean maintaining a lock ordering by hand.
+     * The two in-memory copies this used to keep are gone. The table is the cache now, so the
+     * catalogue survives process death, and nineteen rows are not worth a second tier.
      */
     private val genreMutex = Mutex()
-
-    private var movieGenreList: Result.Success<List<MovieGenre>>? = null
-
-    private var movieGenreMap: Result.Success<IntObjectMap<String>>? = null
 
     override suspend fun getMovieGenreList(): Result<List<MovieGenre>, MovieDataException> =
         genreMutex.withLock { loadGenreList() }
 
     override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException> =
         genreMutex.withLock {
-            movieGenreMap ?: when (val result = loadGenreList()) {
-                is Result.Success<List<MovieGenre>> -> {
-                    val data = result.data
-                    val map = MutableIntObjectMap<String>(data.size)
-                    data.forEach { (id, name) ->
-                        map[id] = name
-                    }
-                    Result.Success<IntObjectMap<String>>(map).also { movieGenreMap = it }
-                }
+            when (val result = loadGenreList()) {
+                is Result.Success<List<MovieGenre>> -> Result.Success(result.data.toGenreMap())
                 is Result.Error<MovieDataException> -> result
             }
         }
 
     /**
      * Must only be called while holding [genreMutex] — kotlinx.coroutines' Mutex is not
-     * reentrant, so getMovieGenreMap() would deadlock if it went through the public getter.
-     * Failures are not cached, so a later caller retries.
+     * reentrant, so going through the public getter would deadlock.
      */
-    private suspend fun loadGenreList(): Result<List<MovieGenre>, MovieDataException> =
-        movieGenreList ?: fetchMovieGenre().also {
-            if (it is Result.Success<List<MovieGenre>>) movieGenreList = it
+    private suspend fun loadGenreList(): Result<List<MovieGenre>, MovieDataException> {
+        val cached = local.genres()
+        val refreshedAt = local.genresRefreshedAt()
+        if (cached.isNotEmpty() && refreshedAt != null && !isStale(refreshedAt, now()))
+            return Result.Success(cached)
+
+        return when (val fetched = fetchMovieGenre()) {
+            is Result.Success<List<MovieGenre>> -> fetched.also {
+                local.replaceGenres(it.data, refreshedAt = now())
+            }
+            // A stale catalogue still beats showing no genre names at all, so the failure is
+            // only reported when there is nothing cached to fall back on.
+            is Result.Error<MovieDataException> ->
+                if (cached.isNotEmpty()) Result.Success(cached) else fetched
         }
+    }
+
+    /**
+     * Rebuilt per call rather than memoised: nineteen entries, and the one caller
+     * (SimilarMovieUseCase) caches its own result anyway.
+     */
+    private fun List<MovieGenre>.toGenreMap(): IntObjectMap<String> {
+        val map = MutableIntObjectMap<String>(size)
+        forEach { (id, name) -> map[id] = name }
+        return map
+    }
 }

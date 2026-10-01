@@ -54,5 +54,9 @@ internal interface MovieLocalDataSource {
 
     suspend fun genres(): List<MovieGenre>
 
-    suspend fun replaceGenres(genres: List<MovieGenre>)
+    /** When the catalogue was last fetched, or null if it never has been. */
+    suspend fun genresRefreshedAt(): Long?
+
+    /** Replaces the catalogue and its refresh stamp together, so neither can outlive the other. */
+    suspend fun replaceGenres(genres: List<MovieGenre>, refreshedAt: Long)
 }
