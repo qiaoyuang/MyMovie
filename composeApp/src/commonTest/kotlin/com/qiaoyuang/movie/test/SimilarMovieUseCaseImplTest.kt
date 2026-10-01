@@ -25,33 +25,40 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
         assertEquals(MockedRepository.COUNT, result.data?.size)
     }
 
+    /**
+     * The use case used to memoise its result; the repository is cache-first now, so it does
+     * not. What has to hold instead is that it goes through that cache-first entry point:
+     * calling similarMovies() here would compile, look identical, and silently put the detail
+     * strip back on the network. "No second request" is a repository property now, covered by
+     * MovieRepositoryImplTest.
+     */
     @Test
-    fun test_caches_result_on_second_invocation() = runTest {
-        val useCase = SimilarMovieUseCaseImpl(MockedRepository(), mainThreadSurrogate, 1L)
-        val first = useCase()
-        val second = useCase()
-        assertSame(first, second)
+    fun test_reads_through_the_cache_first_entry_point() = runTest {
+        val repo = object : MovieRepository by MockedRepository() {
+            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
+                throw AssertionError("the detail strip must not bypass the cache")
+        }
+        val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
+        val result = useCase()
+        assertIs<Result.Success<List<SimilarMovieShowModel>?>>(result)
+        assertEquals(MockedRepository.COUNT, result.data?.size)
     }
 
     @Test
     fun test_returns_null_when_all_movies_lack_poster_path() = runTest {
         val repo = object : MovieRepository by MockedRepository() {
-            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
+            override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> =
                 Result.Success(
-                    MovieResponse(
-                        page = 1,
-                        results = listOf(
-                            Movie(
-                                id = 1L,
-                                title = "a",
-                                overview = "abc",
-                                posterPath = null,
-                                backdropPath = null,
-                                voteAverage = 1.0,
-                                genreIds = null,
-                            )
-                        ),
-                        totalPages = 1,
+                    listOf(
+                        Movie(
+                            id = 1L,
+                            title = "a",
+                            overview = "abc",
+                            posterPath = null,
+                            backdropPath = null,
+                            voteAverage = 1.0,
+                            genreIds = null,
+                        )
                     )
                 )
         }
@@ -65,7 +72,7 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
     fun test_returns_error_when_similar_movies_fails() = runTest {
         val failure = MovieDataException.Network(RuntimeException("Network error"))
         val repo = object : MovieRepository by MockedRepository() {
-            override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
+            override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> =
                 Result.Error(failure)
         }
         val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)

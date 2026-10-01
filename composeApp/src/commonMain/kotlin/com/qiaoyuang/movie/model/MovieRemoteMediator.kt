@@ -6,8 +6,8 @@ import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
-import com.qiaoyuang.movie.model.local.ListCursor
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
+import com.qiaoyuang.movie.model.local.cursorAfter
 import com.qiaoyuang.movie.model.local.currentTimeMillis
 import com.qiaoyuang.movie.model.local.isStale
 import kotlinx.coroutines.CancellationException
@@ -59,13 +59,12 @@ internal class MovieRemoteMediator(
                 is Result.Error<MovieDataException> -> MediatorResult.Error(result.error)
                 is Result.Success<MovieResponse> -> {
                     val response = result.data
-                    val cursor = ListCursor(
-                        nextPage = if (page < response.totalPages) page + 1 else null,
-                        totalPages = response.totalPages,
+                    val cursor = response.cursorAfter(
+                        page = page,
                         // Only a refresh restarts the TTL. If appending did too, paging deep
                         // into a list would keep renewing it and page one would never be
                         // re-fetched.
-                        lastRefreshedAt = when (loadType) {
+                        refreshedAt = when (loadType) {
                             LoadType.REFRESH -> now()
                             else -> previous?.lastRefreshedAt ?: now()
                         },

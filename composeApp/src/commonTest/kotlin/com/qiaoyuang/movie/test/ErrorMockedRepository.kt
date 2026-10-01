@@ -29,6 +29,8 @@ internal class ErrorMockedRepository : MovieRepository {
 
     override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> = Result.Error(ERROR)
 
+    override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> = Result.Error(ERROR)
+
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> = Result.Error(ERROR)
 
     override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> = Result.Error(ERROR)

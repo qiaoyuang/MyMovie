@@ -1,58 +1,51 @@
 package com.qiaoyuang.movie.domain
 
 import androidx.collection.IntObjectMap
+import com.qiaoyuang.movie.model.MovieDataException
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
-import com.qiaoyuang.movie.model.domain.MovieResponse
+import com.qiaoyuang.movie.model.domain.Movie
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import com.qiaoyuang.movie.model.MovieDataException
 
+/**
+ * Joins the similar movies with the genre catalogue so each row can show its genre names.
+ *
+ * It no longer keeps a cache of its own. Both of the calls below are cache-first in the
+ * repository now, which is where the architecture guide puts that decision — a memo here would
+ * be a third tier shadowing it, and it would have gone stale independently of the table it was
+ * derived from. What is left is the join, which is the only reason this use case exists.
+ */
 internal class SimilarMovieUseCaseImpl(
     private val repository: MovieRepository,
     private val defaultDispatcher: CoroutineDispatcher,
     private val movieId: Long,
 ) : SimilarMovieUseCase {
 
-    private val mutex = Mutex()
-
-    private var cache: Result<List<SimilarMovieShowModel>?, MovieDataException>? = null
-
-    override suspend operator fun invoke(): Result<List<SimilarMovieShowModel>?, MovieDataException> {
-        mutex.withLock {
-            cache?.let {
-                return it
-            }
-        }
-        return coroutineScope {
-            val similarMovieDeferred = async { repository.similarMovies(movieId) }
+    override suspend operator fun invoke(): Result<List<SimilarMovieShowModel>?, MovieDataException> =
+        coroutineScope {
+            val similarMoviesDeferred = async { repository.similarMoviesFirstPage(movieId) }
             val genreMapDeferred = async { repository.getMovieGenreMap() }
-            val similarMovieResult = similarMovieDeferred.await()
+            val similarMoviesResult = similarMoviesDeferred.await()
             val genreMapResult = genreMapDeferred.await()
-            if (similarMovieResult is Result.Success<MovieResponse>
+            if (similarMoviesResult is Result.Success<List<Movie>>
                 && genreMapResult is Result.Success<IntObjectMap<String>>
             ) withContext(defaultDispatcher) {
-                val list = similarMovieResult
-                    .data
-                    .results
-                    .asSequence()
-                    .filter { it.posterPath != null }
-                    .map { it.convertToSimilarMovieShowModel(genreMapResult.data) }
-                    .toList()
-                    .takeIf { it.isNotEmpty() }
-                val result = Result.Success(list)
-                mutex.withLock {
-                    cache = result
-                }
-                result
+                Result.Success(
+                    similarMoviesResult
+                        .data
+                        .asSequence()
+                        // A row without a poster would render as an empty card.
+                        .filter { it.posterPath != null }
+                        .map { it convertToSimilarMovieShowModel genreMapResult.data }
+                        .toList()
+                        .takeIf { it.isNotEmpty() }
+                )
             } else {
-                (similarMovieResult as? Result.Error<MovieDataException>)
+                (similarMoviesResult as? Result.Error<MovieDataException>)
                     ?: (genreMapResult as Result.Error<MovieDataException>)
             }
         }
-    }
 }

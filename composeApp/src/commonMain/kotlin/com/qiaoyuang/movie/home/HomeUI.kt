@@ -3,8 +3,6 @@ package com.qiaoyuang.movie.home
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -15,7 +13,6 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.*
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,7 +20,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
@@ -31,8 +27,6 @@ import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.domain.Movie
 import mymovie.composeapp.generated.resources.Res
-import mymovie.composeapp.generated.resources.load_more_failed
-import mymovie.composeapp.generated.resources.no_more_results
 import mymovie.composeapp.generated.resources.no_result
 import mymovie.composeapp.generated.resources.top_movies
 import org.jetbrains.compose.resources.stringResource
@@ -87,77 +81,23 @@ internal fun Home(
             // Subscribing is what starts the first load; there is no getTopMovies() to call.
             val movies = homeViewModel.movies.collectAsLazyPagingItems()
 
-            // Combined states — mediator and local source together. Now that the cache can
-            // answer first, the full-screen states have to be gated on there being nothing to
-            // show at all: a refresh with cached movies on screen used to blank out the list
-            // the user was reading.
-            val refresh = movies.loadState.refresh
-            val append = movies.loadState.append
-            val hasMovies = movies.itemCount > 0
-            // The mediator's own refresh, not the combined one. Every page the mediator appends
-            // invalidates the local source, and Paging answers that with a source refresh — so
-            // the combined state goes Loading whenever the user simply scrolls far enough to
-            // need another page, which is not what a pull-to-refresh indicator should report.
-            val networkRefresh = movies.loadState.mediator?.refresh
-
-            when {
-                !hasMovies && refresh is LoadState.Loading -> Loading()
-                !hasMovies && refresh is LoadState.Error ->
-                    Error(message = refresh.error.toErrorKind().message()) { movies.retry() }
-                !hasMovies -> EmptyData(stringResource(Res.string.no_result))
-                else -> {
-                    PullToRefreshBox(
-                        isRefreshing = networkRefresh is LoadState.Loading,
-                        // Discards the cached list and re-reads page one, which is the only way
-                        // to see new movies before the seven-day TTL expires.
-                        onRefresh = movies::refresh,
-                    ) {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth(),
-                            state = rememberLazyListState(),
-                        ) {
-                            item {
-                                Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
-                            }
-                            // Reading movies[index] is also what tells Paging how far the user
-                            // has scrolled, so prefetching replaces the old OnBottomReached
-                            // callback.
-                            items(
-                                count = movies.itemCount,
-                                key = movies.itemKey { it.id },
-                            ) { index ->
-                                movies[index]?.let { MovieItem(it, navigateToDetail) }
-                                HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
-                            }
-
-                            if (append is LoadState.Loading) item {
-                                LoadingMore()
-                            }
-                        }
-                    }
-
-                    // A refresh that fails with movies on screen must not replace them with the
-                    // error screen — the cached list is still the best thing to show — so it is
-                    // reported without taking over the UI.
-                    if (networkRefresh is LoadState.Error) {
-                        val refreshFailedMessage = networkRefresh.error.toErrorKind().message()
-                        LaunchedEffect(networkRefresh) {
-                            snackbarHostState.showSnackbar(refreshFailedMessage)
-                        }
-                    }
-
-                    val noMoreMessage = stringResource(Res.string.no_more_results)
-                    val loadMoreFailedMessage = stringResource(Res.string.load_more_failed)
-                    // Keyed on the state itself, so a later failure fires again — the previous
-                    // version keyed on Unit and only ever showed the snackbar once.
-                    LaunchedEffect(append) {
-                        when {
-                            // endOfPaginationReached lives on LoadState itself and is always
-                            // false for Loading and Error, so no type check is needed here.
-                            append is LoadState.Error -> snackbarHostState.showSnackbar(loadMoreFailedMessage)
-                            append.endOfPaginationReached -> snackbarHostState.showSnackbar(noMoreMessage)
-                        }
-                    }
+            PagedList(
+                items = movies,
+                snackbarHostState = snackbarHostState,
+                emptyMessage = stringResource(Res.string.no_result),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                item {
+                    Spacer(Modifier.windowInsetsTopHeight(WindowInsets.systemBars))
+                }
+                // Reading movies[index] is also what tells Paging how far the user has
+                // scrolled, so prefetching replaces the old OnBottomReached callback.
+                items(
+                    count = movies.itemCount,
+                    key = movies.itemKey { it.id },
+                ) { index ->
+                    movies[index]?.let { MovieItem(it, navigateToDetail) }
+                    HorizontalDivider(Modifier.padding(start = 16.dp, end = 16.dp), thickness = 1.dp)
                 }
             }
         }

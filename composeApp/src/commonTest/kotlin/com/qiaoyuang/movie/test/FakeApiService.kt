@@ -25,6 +25,7 @@ internal class FakeApiService(
         private set
     var genreCalls = 0
         private set
+    val similarPagesRequested = mutableListOf<Int>()
 
     override suspend infix fun fetchTopRated(page: Int): ApiMovieResponseDTO = unused()
 
@@ -42,7 +43,27 @@ internal class FakeApiService(
         )
     }
 
-    override suspend fun similarMovies(movieId: Long, page: Int): ApiMovieResponseDTO = unused()
+    override suspend fun similarMovies(movieId: Long, page: Int): ApiMovieResponseDTO {
+        similarPagesRequested += page
+        failIfOffline()
+        val start = (page - 1L) * 20 + 1
+        return ApiMovieResponseDTO(
+            page = page,
+            results = (start until start + 20).map { id ->
+                ApiMovieDTO(
+                    id = id,
+                    title = "similar $id",
+                    overview = "overview $id",
+                    posterPath = "/poster$id",
+                    backdropPath = null,
+                    voteAverage = 6.0,
+                    genreIds = listOf(12),
+                )
+            },
+            totalPages = 3,
+            totalResults = 60,
+        )
+    }
 
     override suspend fun fetchMovieGenre(): ApiMovieGenresResponseDTO {
         genreCalls++

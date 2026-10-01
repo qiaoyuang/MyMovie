@@ -71,7 +71,7 @@ internal val mainModule = module {
             movieId = movieId,
         )
     }
-    viewModel { SimilarMoviesViewModel(get(), it.get()) }
+    viewModel { SimilarMoviesViewModel(get(), get(), it.get()) }
 }
 
 /**

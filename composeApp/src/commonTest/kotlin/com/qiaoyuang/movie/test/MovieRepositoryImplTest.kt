@@ -7,6 +7,7 @@ import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.local.CACHE_TTL_MILLIS
+import com.qiaoyuang.movie.model.local.similarListKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -104,6 +105,89 @@ class MovieRepositoryImplTest {
 
         assertIs<Result.Success<Movie>>(result)
         assertEquals(0, service.movieDetailCalls)
+    }
+
+    // ---- similar movies, first page ----
+
+    @Test
+    fun theFirstPageOfSimilarMoviesIsFetchedOnceAndThenCached() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+        val repository = repository(service, local)
+
+        val first = repository.similarMoviesFirstPage(550L)
+        val second = repository.similarMoviesFirstPage(550L)
+
+        assertIs<Result.Success<List<Movie>>>(first)
+        assertIs<Result.Success<List<Movie>>>(second)
+        assertEquals(first.data.map(Movie::id), second.data.map(Movie::id))
+        assertEquals(listOf(1), service.similarPagesRequested)
+    }
+
+    /**
+     * What makes the detail strip and the paged "all similar movies" screen share one fetch:
+     * the strip leaves a cursor behind, so the mediator opens on a fresh list and continues
+     * from page two instead of re-reading page one.
+     */
+    @Test
+    fun theFirstPageLeavesACursorThePagedScreenCanContinueFrom() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+
+        repository(service, local).similarMoviesFirstPage(550L)
+
+        val cursor = local.cursorOf(similarListKey(550L))
+        assertEquals(2, cursor?.nextPage)
+        assertEquals(3, cursor?.totalPages)
+        assertEquals(nowMillis, cursor?.lastRefreshedAt)
+    }
+
+    @Test
+    fun eachMovieGetsItsOwnCachedSimilarList() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+        val repository = repository(service, local)
+
+        repository.similarMoviesFirstPage(550L)
+        repository.similarMoviesFirstPage(680L)
+
+        assertEquals(listOf(1, 1), service.similarPagesRequested)
+        assertEquals(20, local.positionsIn(similarListKey(550L)).size)
+        assertEquals(20, local.positionsIn(similarListKey(680L)).size)
+    }
+
+    @Test
+    fun aStaleSimilarListIsRefetched() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+        repository(service, local).similarMoviesFirstPage(550L)
+
+        repository(service, local, now = nowMillis + CACHE_TTL_MILLIS).similarMoviesFirstPage(550L)
+
+        assertEquals(listOf(1, 1), service.similarPagesRequested)
+    }
+
+    @Test
+    fun aStaleSimilarListIsStillServedWhenTheFetchFails() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+        repository(service, local).similarMoviesFirstPage(550L)
+        service.offline = true
+
+        val result = repository(service, local, now = nowMillis + CACHE_TTL_MILLIS)
+            .similarMoviesFirstPage(550L)
+
+        assertIs<Result.Success<List<Movie>>>(result)
+        assertEquals(20, result.data.size)
+    }
+
+    @Test
+    fun anEmptySimilarListAndNoNetworkIsAFailure() = runTest {
+        val service = FakeApiService().apply { offline = true }
+
+        val result = repository(service, FakeMovieLocalDataSource()).similarMoviesFirstPage(550L)
+
+        assertIs<Result.Error<MovieDataException>>(result)
     }
 
     // ---- genre catalogue ----

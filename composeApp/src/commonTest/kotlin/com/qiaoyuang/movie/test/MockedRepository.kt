@@ -72,6 +72,9 @@ internal class MockedRepository : MovieRepository {
         )
     )
 
+    override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> =
+        Result.Success(generateMovies(COUNT))
+
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> = Result.Success(
         listOf(
             MovieGenre(1, "a"),

@@ -8,13 +8,16 @@ import com.qiaoyuang.movie.model.MOVIE_PAGE_SIZE
 import com.qiaoyuang.movie.model.MovieDataException
 import com.qiaoyuang.movie.model.MovieListPagingSource
 import com.qiaoyuang.movie.model.MovieRemoteMediator
+import com.qiaoyuang.movie.model.MovieRepositoryImpl
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.local.CACHE_TTL_MILLIS
 import com.qiaoyuang.movie.model.local.ListCursor
 import com.qiaoyuang.movie.model.local.TOP_RATED_LIST_KEY
+import com.qiaoyuang.movie.model.local.similarListKey
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -66,11 +69,12 @@ class OfflineFirstPagerTest {
         local: FakeMovieLocalDataSource,
         scope: CoroutineScope,
         now: Long = nowMillis,
+        listKey: String = TOP_RATED_LIST_KEY,
         fetchPage: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
     ) = Pager(
         config = PagingConfig(pageSize = MOVIE_PAGE_SIZE, enablePlaceholders = false),
-        remoteMediator = MovieRemoteMediator(TOP_RATED_LIST_KEY, local, fetchPage, now = { now }),
-        pagingSourceFactory = { MovieListPagingSource(local, TOP_RATED_LIST_KEY, scope) },
+        remoteMediator = MovieRemoteMediator(listKey, local, fetchPage, now = { now }),
+        pagingSourceFactory = { MovieListPagingSource(local, listKey, scope) },
     ).flow
 
     private fun FakeMovieLocalDataSource.cachedIds() =
@@ -180,6 +184,33 @@ class OfflineFirstPagerTest {
             .asSnapshot()
 
         assertEquals((1L..20L).toList(), items.map(Movie::id))
+    }
+
+    /**
+     * The payoff of giving both similar-movie surfaces the same list key: the detail screen's
+     * strip fetches page one through the repository, and the paged screen's mediator then opens
+     * on a fresh cursor and continues from page two instead of re-reading it.
+     */
+    @Test
+    fun theDetailStripAndThePagedScreenShareOneFetch() = runTest {
+        val service = FakeApiService()
+        val local = FakeMovieLocalDataSource()
+        val repository =
+            MovieRepositoryImpl(service, local, Dispatchers.Unconfined, now = { nowMillis })
+        val movieId = 550L
+
+        // The detail screen opens first and its strip fills the cache.
+        repository.similarMoviesFirstPage(movieId)
+        assertEquals(listOf(1), service.similarPagesRequested)
+
+        // Then the user taps through to the full paged list.
+        pagerFlow(local, backgroundScope, listKey = similarListKey(movieId)) { page ->
+            repository.similarMovies(movieId, page)
+        }.asSnapshot()
+
+        // Page one is not read a second time.
+        assertEquals(listOf(1, 2, 3), service.similarPagesRequested)
+        assertEquals((1L..60L).toList(), local.positionsIn(similarListKey(movieId)).map { it.second })
     }
 
     @Test

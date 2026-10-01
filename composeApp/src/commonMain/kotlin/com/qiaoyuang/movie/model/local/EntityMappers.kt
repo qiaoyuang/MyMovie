@@ -2,6 +2,7 @@ package com.qiaoyuang.movie.model.local
 
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
+import com.qiaoyuang.movie.model.domain.MovieResponse
 
 /**
  * Domain <-> entity mapping, plus the two list invariants (position numbering and page-overlap
@@ -43,6 +44,18 @@ internal fun List<MovieEntity>.toDomain(crossRefs: List<MovieGenreEntity>): List
     val byMovie = crossRefs.groupBy(MovieGenreEntity::movieId)
     return map { entity -> entity.toDomain(byMovie[entity.id]?.map(MovieGenreEntity::genreId)) }
 }
+
+/**
+ * The cursor a freshly fetched page implies. Shared so the one rule that decides when a list has
+ * run out — the requested page reaching totalPages — cannot be stated twice and differently.
+ * Derived from the requested page rather than the one the response echoes back, because a server
+ * that misreports its page number would otherwise stall or repeat pagination.
+ */
+internal fun MovieResponse.cursorAfter(page: Int, refreshedAt: Long): ListCursor = ListCursor(
+    nextPage = if (page < totalPages) page + 1 else null,
+    totalPages = totalPages,
+    lastRefreshedAt = refreshedAt,
+)
 
 internal fun ListCursor.toEntity(listKey: String): ListRemoteKeyEntity = ListRemoteKeyEntity(
     listKey = listKey,

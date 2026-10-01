@@ -7,8 +7,10 @@ import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.domain.toDomain
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
+import com.qiaoyuang.movie.model.local.cursorAfter
 import com.qiaoyuang.movie.model.local.currentTimeMillis
 import com.qiaoyuang.movie.model.local.isStale
+import com.qiaoyuang.movie.model.local.similarListKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
@@ -49,6 +51,36 @@ internal class MovieRepositoryImpl(
 
     override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
         wrap { service.similarMovies(movieId, page).toDomain() }
+
+    /**
+     * Same shape as the genre catalogue below: serve the cache while it is fresh, otherwise
+     * fetch and store, and fall back to a stale cache rather than to an error when the fetch
+     * fails. Writing through replaceList also leaves a cursor behind, so opening the full paged
+     * screen afterwards finds the list fresh and continues from page two instead of starting
+     * over.
+     */
+    override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> {
+        val listKey = similarListKey(movieId)
+        val cached = local.moviesIn(listKey, limit = MOVIE_PAGE_SIZE, offset = 0)
+        val cursor = local.cursorOf(listKey)
+        if (cached.isNotEmpty() && cursor != null && !isStale(cursor.lastRefreshedAt, now()))
+            return Result.Success(cached)
+
+        return when (val fetched = similarMovies(movieId, FIRST_PAGE)) {
+            is Result.Success<MovieResponse> -> {
+                val page = fetched.data.results
+                local.replaceList(
+                    listKey = listKey,
+                    pageSize = MOVIE_PAGE_SIZE,
+                    movies = page,
+                    cursor = fetched.data.cursorAfter(FIRST_PAGE, refreshedAt = now()),
+                )
+                Result.Success(page)
+            }
+            is Result.Error<MovieDataException> ->
+                if (cached.isNotEmpty()) Result.Success(cached) else fetched
+        }
+    }
 
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> =
         wrap { service.fetchMovieGenre().genres.map { it.toDomain() } }
@@ -134,5 +166,9 @@ internal class MovieRepositoryImpl(
         val map = MutableIntObjectMap<String>(size)
         forEach { (id, name) -> map[id] = name }
         return map
+    }
+
+    private companion object {
+        const val FIRST_PAGE = 1
     }
 }

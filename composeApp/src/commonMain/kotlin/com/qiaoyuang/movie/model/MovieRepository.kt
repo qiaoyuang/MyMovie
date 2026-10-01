@@ -13,7 +13,15 @@ internal interface MovieRepository {
 
     suspend fun movieDetail(movieId: Long): Result<Movie, MovieDataException>
 
+    /** Always a request. MovieRemoteMediator is the thing that fills the cache, so it cannot read it. */
     suspend fun similarMovies(movieId: Long, page: Int = 1): Result<MovieResponse, MovieDataException>
+
+    /**
+     * The first page of similar movies, cache first — what the detail screen's strip shows.
+     * Shares the cached list the paged "all similar movies" screen pages through, so whichever
+     * of the two opens first fills it for the other.
+     */
+    suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException>
 
     suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException>
 
