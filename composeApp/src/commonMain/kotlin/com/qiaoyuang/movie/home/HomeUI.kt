@@ -26,6 +26,7 @@ import coil3.compose.AsyncImage
 import com.qiaoyuang.movie.basicui.*
 import com.qiaoyuang.movie.model.APIService
 import com.qiaoyuang.movie.model.domain.Movie
+import com.qiaoyuang.movie.model.domain.ThemeMode
 import mymovie.composeapp.generated.resources.Res
 import mymovie.composeapp.generated.resources.no_result
 import mymovie.composeapp.generated.resources.top_movies

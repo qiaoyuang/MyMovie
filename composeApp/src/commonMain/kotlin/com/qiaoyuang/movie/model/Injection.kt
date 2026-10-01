@@ -1,5 +1,6 @@
 package com.qiaoyuang.movie.model
 
+import com.qiaoyuang.movie.basicui.MovieTheme
 import com.qiaoyuang.movie.detail.DetailViewModel
 import com.qiaoyuang.movie.domain.SimilarMovieUseCase
 import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
@@ -57,6 +58,7 @@ internal val mainModule = module {
     single<APIService> { KtorService(get()) }
     // One connection for the process lifetime: a sqllin Database wraps a single connection and
     // already serialises statement execution, so re-opening per query would only add cost.
+    single<SettingsStore> { MmkvSettingsStore() }
     single { createMovieDatabase() }
     single<MovieLocalDataSource> { MovieLocalDataSourceImpl(get(), get(GlobalDispatchers.IO)) }
     single<MovieRepository> { MovieRepositoryImpl(get(), get(), get(GlobalDispatchers.DEFAULT)) }
@@ -82,7 +84,9 @@ internal val mainModule = module {
  * the rest of setupApp().
  */
 internal fun initKoin() {
-    startKoin {
+    val application = startKoin {
         modules(mainModule, navigationModule)
     }
+    // Before any composition, so the first frame already uses the saved theme.
+    MovieTheme.bind(application.koin.get())
 }

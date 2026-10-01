@@ -1,5 +1,7 @@
 package com.qiaoyuang.movie.basicui
 
+import com.qiaoyuang.movie.model.SettingsStore
+import com.qiaoyuang.movie.model.domain.ThemeMode
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -66,20 +68,33 @@ val DarkColors = MovieColors(
 
 val LocalMovieColors = staticCompositionLocalOf { LightColors }
 
-enum class ThemeMode {
-    LIGHT,
-    DARK,
-    FOLLOW_SYSTEM
-}
-
 object MovieTheme {
+
+    private lateinit var store: SettingsStore
+
     private var _themeMode by mutableStateOf(ThemeMode.FOLLOW_SYSTEM)
-        
+
     val themeMode: ThemeMode
         get() = _themeMode
-        
+
+    /**
+     * Hands this holder the store it reads from and writes back to, and loads the saved choice.
+     *
+     * Called from initKoin(), which runs inside setupApp() before anything composes. Reading the
+     * saved value any later would show one frame in the wrong theme, and it is the reason this
+     * is a bind step rather than a lazy read: there is no composition to recover from that flash.
+     *
+     * lateinit rather than a nullable: a theme toggle that silently failed to persist is worse
+     * than a crash that names the missing setup.
+     */
+    internal fun bind(store: SettingsStore) {
+        this.store = store
+        _themeMode = store.themeMode()
+    }
+
     fun setThemeMode(mode: ThemeMode) {
         _themeMode = mode
+        store.setThemeMode(mode)
     }
 
     @Composable
