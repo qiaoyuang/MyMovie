@@ -68,6 +68,39 @@ class SearchViewModelTest : BasicTest() {
         assertTrue(viewModel.movies.asSnapshot().size >= MockedRepository.TOTAL_RESULTS)
     }
 
+    /**
+     * The crash this reproduces: scrolling the search results threw
+     * `IllegalArgumentException: Key "1497151" was already used`, because TMDB returned the same
+     * movie on two pages and LazyColumn keys items by movie id. Asserted end to end through the
+     * real pipeline, since the de-duplication has to survive debounce, cachedIn and the genre
+     * filter to reach the list.
+     */
+    @Test
+    fun test_overlapping_pages_never_present_the_same_movie_twice() = runTest {
+        val repository = object : MovieRepository by MockedRepository() {
+            override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> {
+                // Each page repeats its predecessor's last movie.
+                val first = (page - 1L) * 20 - (page - 1L) + 1
+                return Result.Success(
+                    MovieResponse(
+                        page = page,
+                        results = (first until first + 20).map { id ->
+                            Movie(id, "title$id", "overview$id", "/p$id", null, 7.0, listOf(1))
+                        },
+                        totalPages = 5,
+                    )
+                )
+            }
+        }
+        val viewModel = searchViewModel(repository)
+        viewModel.search("movie")
+
+        val ids = viewModel.movies.asSnapshot().map(Movie::id)
+
+        assertTrue(ids.isNotEmpty())
+        assertEquals(ids.distinct(), ids)
+    }
+
     @Test
     fun test_genre_filter_keeps_only_matching_movies() = runTest {
         val viewModel = searchViewModel()

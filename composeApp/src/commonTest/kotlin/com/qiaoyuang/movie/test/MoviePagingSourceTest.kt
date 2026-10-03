@@ -1,8 +1,10 @@
 package com.qiaoyuang.movie.test
 
 import androidx.paging.PagingSource
+import com.qiaoyuang.movie.model.MovieDataException
 import com.qiaoyuang.movie.model.MoviePagingSource
 import com.qiaoyuang.movie.model.MovieRepository
+import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import kotlinx.coroutines.test.runTest
@@ -105,5 +107,111 @@ class MoviePagingSourceTest {
 
     private companion object {
         const val MOVIE_ID = 1L
+    }
+
+    /**
+     * Pages that overlap, as TMDB's do when the result set shifts between requests: page n ends
+     * with the movie page n+1 begins with.
+     */
+    private class OverlappingRepository(
+        private val pageSize: Int = 3,
+        private val totalPages: Int = 3,
+    ) : MovieRepository by MockedRepository() {
+        override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> {
+            val first = (page - 1L) * pageSize - (page - 1L) + 1
+            return Result.Success(
+                MovieResponse(
+                    page = page,
+                    results = (first until first + pageSize).map { id ->
+                        Movie(
+                            id = id,
+                            title = "title$id",
+                            overview = "overview$id",
+                            posterPath = null,
+                            backdropPath = null,
+                            voteAverage = 7.0,
+                            genreIds = null,
+                        )
+                    },
+                    totalPages = totalPages,
+                )
+            )
+        }
+    }
+
+    private fun search(repository: MovieRepository) =
+        MoviePagingSource { page -> repository.search("word", page) }
+
+    /**
+     * The crash this guards against: two items with the same id make LazyColumn's key collide
+     * and throw "Key ... was already used".
+     */
+    @Test
+    fun test_a_movie_repeated_from_an_earlier_page_is_dropped() = runTest {
+        val source = search(OverlappingRepository())
+
+        val first = source.loadPage(refresh())
+        val second = source.loadPage(append(2))
+
+        assertEquals(listOf(1L, 2L, 3L), first.data.map(Movie::id))
+        // Page two repeats movie 3, which page one already produced.
+        assertEquals(listOf(4L, 5L), second.data.map(Movie::id))
+        val all = (first.data + second.data).map(Movie::id)
+        assertEquals(all.distinct(), all)
+    }
+
+    @Test
+    fun test_a_movie_repeated_inside_one_page_is_dropped() = runTest {
+        val repo = object : MovieRepository by MockedRepository() {
+            override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> =
+                Result.Success(
+                    MovieResponse(
+                        page = page,
+                        results = listOf(1L, 2L, 1L).map { id ->
+                            Movie(id, "t$id", "o$id", null, null, 7.0, null)
+                        },
+                        totalPages = 1,
+                    )
+                )
+        }
+
+        assertEquals(listOf(1L, 2L), search(repo).loadPage(refresh()).data.map(Movie::id))
+    }
+
+    /** A page emptied by de-duplication must not look like the end of the list. */
+    @Test
+    fun test_an_entirely_duplicate_page_still_offers_the_next_key() = runTest {
+        val repo = object : MovieRepository by MockedRepository() {
+            override suspend fun search(word: String, page: Int): Result<MovieResponse, MovieDataException> =
+                Result.Success(
+                    MovieResponse(
+                        page = page,
+                        results = listOf(Movie(1L, "t", "o", null, null, 7.0, null)),
+                        totalPages = 5,
+                    )
+                )
+        }
+        val source = search(repo)
+
+        source.loadPage(refresh())
+        val second = source.loadPage(append(2))
+
+        assertEquals(emptyList(), second.data)
+        assertEquals(3, second.nextKey)
+    }
+
+    /**
+     * De-duplication is per generation. Paging builds a new source on refresh, so the movies it
+     * already produced have to come back — otherwise a refresh would return an empty list.
+     */
+    @Test
+    fun test_a_new_generation_starts_de_duplicating_from_scratch() = runTest {
+        val repository = OverlappingRepository()
+        val firstGeneration = search(repository)
+        firstGeneration.loadPage(refresh())
+
+        val afterRefresh = search(repository).loadPage(refresh())
+
+        assertEquals(listOf(1L, 2L, 3L), afterRefresh.data.map(Movie::id))
     }
 }

@@ -20,13 +20,33 @@ internal class MoviePagingSource(
     private val fetchPage: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
 ) : PagingSource<Int, Movie>() {
 
+    /**
+     * Ids already handed to Paging. TMDB pages a result set that keeps moving, so the same movie
+     * can come back on two pages when the ordering shifts between requests — and two items with
+     * the same id make LazyColumn's key collide, which throws rather than rendering twice.
+     *
+     * The DB-backed lists get this for free: their (listKey, movieId) primary key rejects the
+     * duplicate on insert. This is the same guarantee for the one list that never reaches the
+     * database.
+     *
+     * Instance state is the right scope. A PagingSource lives for exactly one generation, and
+     * Paging builds a new one on refresh, so the set is emptied precisely when the pages it
+     * describes are thrown away. A plain MutableSet needs no synchronisation: this source never
+     * sets a prevKey, so Paging only ever runs the initial load and then appends, one at a time.
+     */
+    private val emittedIds = mutableSetOf<Long>()
+
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Movie> {
         // params.loadSize is deliberately ignored: the endpoint is paginated by page number,
         // not by offset/limit, so Paging's requested size cannot be honoured.
         val page = params.key ?: FIRST_PAGE
         return when (val result = fetchPage(page)) {
             is Result.Success<MovieResponse> -> LoadResult.Page(
-                data = result.data.results,
+                // add() reports whether the id is new, so this drops a repeat of an earlier
+                // page and a repeat within this one in a single pass. A page left shorter —
+                // even empty — does not end pagination here, because nextKey is what decides
+                // that for a page-numbered endpoint.
+                data = result.data.results.filter { emittedIds.add(it.id) },
                 // No backwards paging: the list only ever grows downwards.
                 prevKey = null,
                 // Derived from the requested page rather than the one the response echoes
