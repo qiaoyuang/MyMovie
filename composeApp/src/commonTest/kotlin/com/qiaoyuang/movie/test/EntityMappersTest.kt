@@ -3,7 +3,6 @@ package com.qiaoyuang.movie.test
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.local.MovieGenreEntity
 import com.qiaoyuang.movie.model.local.distinctMovies
-import com.qiaoyuang.movie.model.local.filterAlreadyStored
 import com.qiaoyuang.movie.model.local.listEntriesFor
 import com.qiaoyuang.movie.model.local.toDomain
 import com.qiaoyuang.movie.model.local.toEntity
@@ -86,28 +85,24 @@ class EntityMappersTest {
     }
 
     @Test
-    fun moviesAlreadyInTheListAreDropped() {
-        val page = listOf(movie(1L), movie(2L), movie(3L))
-        assertEquals(listOf(2L, 3L), page.filterAlreadyStored(setOf(1L)).map(Movie::id))
-        assertEquals(emptyList(), page.filterAlreadyStored(setOf(1L, 2L, 3L)))
-        assertEquals(listOf(1L, 2L, 3L), page.filterAlreadyStored(emptySet()).map(Movie::id))
-    }
-
-    @Test
     fun aPageThatRepeatsAMovieInsideItselfKeepsTheFirstCopy() {
         val page = listOf(movie(1L), movie(2L), movie(1L))
         assertEquals(listOf(1L, 2L), page.distinctMovies().map(Movie::id))
-        assertEquals(listOf(1L, 2L), page.filterAlreadyStored(emptySet()).map(Movie::id))
     }
 
+    /**
+     * Overlap between pages is no longer filtered here — INSERT OR IGNORE drops the conflicting
+     * row — so positions now mirror the server's ordering and the skipped movie's position is
+     * simply left unused. Harmless, because reads page through with OFFSET, which counts rows.
+     * The behaviour itself is covered by MovieRemoteMediatorTest through the fake.
+     */
     @Test
-    fun filteringThenNumberingLeavesNoDuplicatePositions() {
-        // Page 2 overlaps page 1 on movie 20; the survivors are renumbered from the page base,
-        // so the gap lands at the end of the page rather than in the middle of the list.
+    fun positionsMirrorTheServerOrderingRatherThanBeingCompacted() {
         val page2 = listOf(movie(20L), movie(21L), movie(22L))
-        val fresh = page2.filterAlreadyStored(setOf(20L))
-        val entries = listEntriesFor("top_rated", page = 2, pageSize = 20, movieIds = fresh.map(Movie::id))
-        assertEquals(listOf(20, 21), entries.map { it.position })
-        assertEquals(listOf(21L, 22L), entries.map { it.movieId })
+        val entries = listEntriesFor("top_rated", page = 2, pageSize = 20, movieIds = page2.map(Movie::id))
+        assertEquals(listOf(20, 21, 22), entries.map { it.position })
+        // Movie 20 already sits at position 19 from page one, so storing these skips its row and
+        // leaves position 20 empty — movies 21 and 22 keep 21 and 22.
+        assertEquals(listOf(20L, 21L, 22L), entries.map { it.movieId })
     }
 }

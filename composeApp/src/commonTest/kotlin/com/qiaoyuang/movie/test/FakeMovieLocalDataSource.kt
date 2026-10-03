@@ -8,7 +8,6 @@ import com.qiaoyuang.movie.model.local.MovieListEntryEntity
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
 import com.qiaoyuang.movie.model.local.TableInvalidationTracker
 import com.qiaoyuang.movie.model.local.distinctMovies
-import com.qiaoyuang.movie.model.local.filterAlreadyStored
 import com.qiaoyuang.movie.model.local.listEntriesFor
 
 /**
@@ -16,9 +15,9 @@ import com.qiaoyuang.movie.model.local.listEntriesFor
  * to android.database.sqlite and so cannot run in host tests, which would otherwise leave the
  * RemoteMediator and the DB-backed PagingSource untested.
  *
- * It reuses the production helpers — listEntriesFor, filterAlreadyStored, distinctMovies — so
- * position numbering and page-overlap behaviour are the real ones, not a second implementation
- * that could quietly disagree.
+ * It reuses the production helpers — listEntriesFor and distinctMovies — so position numbering
+ * is the real one. Page-overlap behaviour is SQLite's INSERT OR IGNORE in production, so that
+ * one part is emulated; the emulation is marked where it happens.
  */
 internal class FakeMovieLocalDataSource : MovieLocalDataSource {
 
@@ -69,8 +68,12 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
         cursor: ListCursor,
     ) {
         val stored = entriesByList.getOrPut(listKey) { mutableListOf() }
-        val fresh = movies.filterAlreadyStored(stored.mapTo(mutableSetOf(), MovieListEntryEntity::movieId))
+        val alreadyStored = stored.mapTo(mutableSetOf(), MovieListEntryEntity::movieId)
+        val fresh = movies.distinctMovies()
+        // Stands in for INSERT OR IGNORE: the whole page is numbered, then rows conflicting on
+        // (listKey, movieId) are skipped, so a duplicate leaves its position unused.
         stored += listEntriesFor(listKey, page, pageSize, fresh.map(Movie::id))
+            .filterNot { it.movieId in alreadyStored }
         fresh.forEach { moviesById[it.id] = it }
         cursors[listKey] = cursor
         invalidationTracker.notifyChanged(listKey)

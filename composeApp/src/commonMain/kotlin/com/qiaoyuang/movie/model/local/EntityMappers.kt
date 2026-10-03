@@ -78,10 +78,10 @@ internal fun GenreEntity.toDomain(): MovieGenre = MovieGenre(id = id, name = nam
  * Where page [page] of a list lands. Page N occupies positions [(N-1) * pageSize, N * pageSize),
  * so a page can be rewritten in place and the ordering never depends on insertion order.
  *
- * [movieIds] must already be de-duplicated against what is stored — see [filterAlreadyStored].
- * Its indices, not the caller's, decide positions, so filtering before this call leaves gaps in
- * the numbering. Gaps are harmless: reads order by position and page through with OFFSET, which
- * counts rows rather than position values.
+ * Numbers the whole page; the INSERT OR IGNORE that stores these is what drops a movie the list
+ * already holds, leaving that position unused. So positions mirror the server's ordering exactly
+ * and can have gaps. Gaps are harmless: reads order by position and page through with OFFSET,
+ * which counts rows rather than position values.
  */
 internal fun listEntriesFor(
     listKey: String,
@@ -96,16 +96,10 @@ internal fun listEntriesFor(
 }
 
 /**
- * TMDB can return the same movie on two pages when the underlying ordering shifts between
- * requests, which would violate the (listKey, movieId) primary key. sqllin has no
- * INSERT OR IGNORE, and INSERT OR REPLACE would move the movie to its newer position — making
- * an item the user already scrolled past jump down the list. So the duplicate is dropped
- * instead, keeping the first position we saw it at.
+ * A page can repeat a movie inside itself, which the (listKey, movieId) key would reject — and
+ * which would also give that movie two rows in the genre junction table, whose insert is a plain
+ * one. Overlap *between* pages is handled by INSERT OR IGNORE instead; see writeEntries.
  */
-internal fun List<Movie>.filterAlreadyStored(storedMovieIds: Set<Long>): List<Movie> =
-    distinctMovies().filterNot { it.id in storedMovieIds }
-
-/** A single page can also repeat a movie inside itself, which the same key would reject. */
 internal fun List<Movie>.distinctMovies(): List<Movie> = distinctBy(Movie::id)
 
 /** TMDB pages are 1-based. */

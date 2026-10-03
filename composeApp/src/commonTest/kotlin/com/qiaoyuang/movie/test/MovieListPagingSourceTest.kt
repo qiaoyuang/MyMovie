@@ -7,6 +7,7 @@ import com.qiaoyuang.movie.model.MOVIE_PAGE_SIZE
 import com.qiaoyuang.movie.model.MovieListPagingSource
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.local.ListCursor
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -17,6 +18,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class) // runCurrent()
 class MovieListPagingSourceTest {
 
     private val listKey = "top_rated"

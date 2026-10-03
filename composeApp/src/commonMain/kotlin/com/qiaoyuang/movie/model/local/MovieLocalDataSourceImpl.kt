@@ -3,6 +3,8 @@ package com.qiaoyuang.movie.model.local
 import com.ctrip.sqllin.dsl.Database
 import com.ctrip.sqllin.dsl.DatabaseScope
 import com.ctrip.sqllin.dsl.sql.X
+import com.ctrip.sqllin.dsl.sql.clause.AS
+import com.ctrip.sqllin.dsl.sql.clause.count
 import com.ctrip.sqllin.dsl.sql.clause.EQ
 import com.ctrip.sqllin.dsl.sql.clause.IN
 import com.ctrip.sqllin.dsl.sql.clause.LIMIT
@@ -14,13 +16,15 @@ import com.ctrip.sqllin.dsl.sql.statement.SelectStatement
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
  * The only holder of the sqllin [Database]. Keeping the connection private is what makes
  * [invalidationTracker] trustworthy: no write can happen without going through a method here.
+ *
+ * Every method is a single sqllin scope, and each scope's writes are one transaction, so none of
+ * them needs a lock of its own: sqllin serialises the execution of scopes, and conflicts between
+ * rows are resolved by the statements themselves rather than by reading first.
  *
  * Columns are always referenced as `table.x`, never bare: a bare name would resolve to the
  * enclosing function's parameter of the same name (listKey, page) rather than to the column.
@@ -31,15 +35,6 @@ internal class MovieLocalDataSourceImpl(
 ) : MovieLocalDataSource {
 
     override val invalidationTracker: TableInvalidationTracker = TableInvalidationTracker()
-
-    /**
-     * sqllin collects a scope's statements and executes them when the scope exits, so a SELECT's
-     * results are readable only after the block returns — a read-then-write cannot be expressed
-     * as one transaction. This mutex is what makes appendPage's "which movies do we already
-     * have" read atomic with the insert that acts on it. It covers writers only; a read that
-     * races a write costs at worst one redundant fetch.
-     */
-    private val writeMutex = Mutex()
 
     override suspend fun moviesIn(listKey: String, limit: Int, offset: Int): List<Movie> =
         withContext(ioDispatcher) {
@@ -54,17 +49,16 @@ internal class MovieLocalDataSourceImpl(
             if (ordered.isEmpty()) emptyList() else moviesByIds(ordered.map(MovieListEntryEntity::movieId))
         }
 
-    /**
-     * Counted in Kotlin rather than with COUNT(*), because a sqllin SELECT deserialises into the
-     * entity type and has no column projection. A list holds at most a few hundred three-column
-     * rows, and this runs once per RemoteMediator decision, not per scroll.
-     */
+    /** A real COUNT(*), read into [ListEntryCount] — see its doc for why the type exists. */
     override suspend fun countIn(listKey: String): Int = withContext(ioDispatcher) {
-        var entries: SelectStatement<MovieListEntryEntity>? = null
+        var count: SelectStatement<ListEntryCount>? = null
         database suspendedScope {
-            MovieListEntryEntityTable { table -> entries = table SELECT WHERE(table.listKey EQ listKey) }
+            MovieListEntryEntityTable { table ->
+                count = table SELECT (count(X) AS ListEntryCount::entries) WHERE (table.listKey EQ listKey)
+            }
         }
-        entries?.getResults()?.size ?: 0
+        // An aggregate without GROUP BY always returns exactly one row, zero included.
+        count?.getResults()?.single()?.entries?.toInt() ?: 0
     }
 
     override suspend fun cursorOf(listKey: String): ListCursor? = withContext(ioDispatcher) {
@@ -82,14 +76,12 @@ internal class MovieLocalDataSourceImpl(
         cursor: ListCursor,
     ) = withContext(ioDispatcher) {
         val fresh = movies.distinctMovies()
-        writeMutex.withLock {
-            database suspendedScope {
-                transaction {
-                    MovieListEntryEntityTable { table -> table DELETE WHERE(table.listKey EQ listKey) }
-                    writeMovies(fresh)
-                    writeEntries(listEntriesFor(listKey, FIRST_PAGE, pageSize, fresh.map(Movie::id)))
-                    writeCursor(listKey, cursor)
-                }
+        database suspendedScope {
+            transaction {
+                MovieListEntryEntityTable { table -> table DELETE WHERE(table.listKey EQ listKey) }
+                writeMovies(fresh)
+                writeEntries(listEntriesFor(listKey, FIRST_PAGE, pageSize, fresh.map(Movie::id)))
+                writeCursor(listKey, cursor)
             }
         }
         invalidationTracker.notifyChanged(listKey)
@@ -102,21 +94,12 @@ internal class MovieLocalDataSourceImpl(
         movies: List<Movie>,
         cursor: ListCursor,
     ) = withContext(ioDispatcher) {
-        writeMutex.withLock {
-            var stored: SelectStatement<MovieListEntryEntity>? = null
-            database suspendedScope {
-                MovieListEntryEntityTable { table -> stored = table SELECT WHERE(table.listKey EQ listKey) }
-            }
-            val storedIds = stored?.getResults()
-                ?.mapTo(mutableSetOf(), MovieListEntryEntity::movieId)
-                .orEmpty()
-            val fresh = movies.filterAlreadyStored(storedIds)
-            database suspendedScope {
-                transaction {
-                    writeMovies(fresh)
-                    writeEntries(listEntriesFor(listKey, page, pageSize, fresh.map(Movie::id)))
-                    writeCursor(listKey, cursor)
-                }
+        val fresh = movies.distinctMovies()
+        database suspendedScope {
+            transaction {
+                writeMovies(fresh)
+                writeEntries(listEntriesFor(listKey, page, pageSize, fresh.map(Movie::id)))
+                writeCursor(listKey, cursor)
             }
         }
         invalidationTracker.notifyChanged(listKey)
@@ -131,9 +114,7 @@ internal class MovieLocalDataSourceImpl(
      * list therefore keeps showing the older title until that list is refreshed.
      */
     override suspend fun upsertMovies(movies: List<Movie>) = withContext(ioDispatcher) {
-        writeMutex.withLock {
-            database suspendedScope { transaction { writeMovies(movies.distinctMovies()) } }
-        }
+        database suspendedScope { transaction { writeMovies(movies.distinctMovies()) } }
     }
 
     override suspend fun genres(): List<MovieGenre> = withContext(ioDispatcher) {
@@ -151,19 +132,17 @@ internal class MovieLocalDataSourceImpl(
      */
     override suspend fun replaceGenres(genres: List<MovieGenre>, refreshedAt: Long) =
         withContext(ioDispatcher) {
-            writeMutex.withLock {
-                database suspendedScope {
-                    transaction {
-                        GenreEntityTable { table ->
-                            table DELETE X
-                            if (genres.isNotEmpty())
-                                table INSERT_OR_REPLACE genres.map(MovieGenre::toEntity)
-                        }
-                        writeCursor(
-                            GENRES_LIST_KEY,
-                            ListCursor(nextPage = null, totalPages = 1, lastRefreshedAt = refreshedAt),
-                        )
+            database suspendedScope {
+                transaction {
+                    GenreEntityTable { table ->
+                        table DELETE X
+                        if (genres.isNotEmpty())
+                            table INSERT_OR_REPLACE genres.map(MovieGenre::toEntity)
                     }
+                    writeCursor(
+                        GENRES_LIST_KEY,
+                        ListCursor(nextPage = null, totalPages = 1, lastRefreshedAt = refreshedAt),
+                    )
                 }
             }
         }
@@ -202,10 +181,18 @@ internal class MovieLocalDataSourceImpl(
         if (crossRefs.isNotEmpty()) MovieGenreEntityTable { table -> table INSERT crossRefs }
     }
 
-    /** Plain INSERT: the composite primary key is what makes a surviving duplicate fail loudly. */
+    /**
+     * INSERT OR IGNORE is the de-duplication. TMDB can return the same movie on two pages when
+     * the underlying ordering shifts between requests, which conflicts on (listKey, movieId);
+     * the conflicting row is skipped and the movie keeps the position it already had, so an item
+     * the user has scrolled past does not jump down the list. INSERT OR REPLACE would move it.
+     *
+     * This replaces a SELECT of the stored ids, a Kotlin filter and a mutex holding the two
+     * together: one statement is atomic against other connections, not just other coroutines.
+     */
     private fun DatabaseScope.writeEntries(entries: List<MovieListEntryEntity>) {
         if (entries.isEmpty()) return
-        MovieListEntryEntityTable { table -> table INSERT entries }
+        MovieListEntryEntityTable { table -> table INSERT_OR_IGNORE entries }
     }
 
     private fun DatabaseScope.writeCursor(listKey: String, cursor: ListCursor) {

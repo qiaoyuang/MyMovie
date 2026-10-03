@@ -2,6 +2,7 @@ package com.qiaoyuang.movie.model.local
 
 import com.ctrip.sqllin.dsl.annotation.CompositePrimaryKey
 import com.ctrip.sqllin.dsl.annotation.DBRow
+import com.ctrip.sqllin.dsl.annotation.PrimaryKey
 import kotlinx.serialization.Serializable
 
 /**
@@ -14,25 +15,16 @@ import kotlinx.serialization.Serializable
  * No foreign keys: SQLite only enforces them after `PRAGMA foreign_keys=1`, and nothing in this
  * app deletes a movie or a genre row, so a cascade would never fire. The two places that need
  * referential cleanup (a movie's genres changing) delete explicitly instead.
- *
- * Single-column keys use @CompositePrimaryKey rather than @PrimaryKey: @PrimaryKey requires a
- * nullable property, because it is meant for the auto-generated rowid that SQLite fills in,
- * whereas every key here is a value we already have (a TMDB id, a listKey) and must never be
- * null. A one-column @CompositePrimaryKey emits the same PRIMARY KEY(col) constraint and keeps
- * the property non-null.
- *
- * These are the only public types in this package, against the convention everywhere else here:
- * sqllin-processor always generates `public object <Entity>Table`, so an internal entity would
- * make the generated code expose an internal type and fail to compile.
  */
 
 /**
- * One movie, shared by every list. `id` is TMDB's id, not a generated one.
+ * One movie, shared by every list. A non-null Long @PrimaryKey means the caller supplies the
+ * key — TMDB's id — and it is still an INTEGER PRIMARY KEY, so it is the rowid itself.
  */
 @DBRow("movies")
 @Serializable
-data class MovieEntity(
-    @CompositePrimaryKey val id: Long,
+internal data class MovieEntity(
+    @PrimaryKey val id: Long,
     val title: String,
     val overview: String,
     val posterPath: String?,
@@ -45,8 +37,8 @@ data class MovieEntity(
  */
 @DBRow("genres")
 @Serializable
-data class GenreEntity(
-    @CompositePrimaryKey val id: Int,
+internal data class GenreEntity(
+    @PrimaryKey val id: Int,
     val name: String,
 )
 
@@ -55,7 +47,7 @@ data class GenreEntity(
  */
 @DBRow("movie_genres")
 @Serializable
-data class MovieGenreEntity(
+internal data class MovieGenreEntity(
     @CompositePrimaryKey val movieId: Long,
     @CompositePrimaryKey val genreId: Int,
 )
@@ -72,7 +64,7 @@ data class MovieGenreEntity(
  */
 @DBRow("movie_list_entries")
 @Serializable
-data class MovieListEntryEntity(
+internal data class MovieListEntryEntity(
     @CompositePrimaryKey val listKey: String,
     @CompositePrimaryKey val movieId: Long,
     val position: Int,
@@ -84,9 +76,17 @@ data class MovieListEntryEntity(
  */
 @DBRow("list_remote_keys")
 @Serializable
-data class ListRemoteKeyEntity(
-    @CompositePrimaryKey val listKey: String,
+internal data class ListRemoteKeyEntity(
+    @PrimaryKey val listKey: String,
     val nextPage: Int?,
     val totalPages: Int,
     val lastRefreshedAt: Long,
 )
+
+/**
+ * Not a table — the result type of a COUNT(*). sqllin reads a selected expression into a
+ * property named with AS, so an aggregate needs a type to land in; Long because that is what
+ * SQLite returns for count.
+ */
+@Serializable
+internal data class ListEntryCount(val entries: Long)

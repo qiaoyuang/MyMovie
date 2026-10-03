@@ -39,7 +39,7 @@ internal class MmkvSettingsStore : SettingsStore {
      */
     private val mmkv: MMKV_KMP by lazy { defaultMMKV() }
 
-    override fun themeMode(): ThemeMode = themeModeFrom(mmkv.takeString(KEY_THEME_MODE))
+    override fun themeMode(): ThemeMode = themeModeFrom(mmkv.getString(KEY_THEME_MODE))
 
     override fun setThemeMode(mode: ThemeMode) {
         mmkv[KEY_THEME_MODE] = mode.name
