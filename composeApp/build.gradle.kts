@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.compose.compiler)
     alias(libs.plugins.kotlinx.serialization)
-    alias(libs.plugins.kotlinx.atomicfu)
     alias(libs.plugins.kotlin.cocoapods)
 
     alias(libs.plugins.jetbrains.compose)
@@ -16,7 +15,7 @@ plugins {
 
 kotlin {
     compilerOptions {
-        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xexplicit-backing-fields", "-Xexplicit-context-arguments", "-Xcollection-literals", "-Xintrinsic-const-evaluation", "-Xallow-returns-result-of")
+        freeCompilerArgs.addAll("-Xexpect-actual-classes", "-Xexplicit-context-arguments", "-Xcollection-literals", "-Xintrinsic-const-evaluation", "-Xallow-returns-result-of")
     }
 
     android {
