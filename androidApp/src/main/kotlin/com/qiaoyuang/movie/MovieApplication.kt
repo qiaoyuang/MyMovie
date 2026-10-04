@@ -1,7 +1,7 @@
 package com.qiaoyuang.movie
 
 import android.app.Application
-import androidx.appfunctions.service.AppFunctionConfiguration
+import androidx.appfunctions.AppFunctionConfiguration
 import com.qiaoyuang.movie.appfunctions.MovieFunctions
 
 class MovieApplication : Application(), AppFunctionConfiguration.Provider {

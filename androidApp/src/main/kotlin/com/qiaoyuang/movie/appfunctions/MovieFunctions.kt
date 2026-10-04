@@ -1,7 +1,7 @@
 package com.qiaoyuang.movie.appfunctions
 
+import androidx.appfunctions.AppFunction
 import androidx.appfunctions.AppFunctionContext
-import androidx.appfunctions.service.AppFunction
 
 /**
  * AppFunctions exposing MyMovie's discovery capabilities to AI agents and system assistants.

@@ -2,28 +2,27 @@
 
 junit = "4.13.2"
 kotlin = "2.4.20"
-ksp = "2.3.11"
+ksp = "2.3.12"
 agp = "9.4.1"
 android-compileSdk = "37"
 android-minSdk = "24"
 android-targetSdk = "37"
-compose-plugin = "1.12.0"
+compose-plugin = "1.12.1"
 compose-material3 = "1.9.0"
 compose-icon-extended = "1.7.3"
 
-androidx-annotation = "1.10.0"
+androidx-annotation = "1.11.0"
 androidx-collection = "1.6.0"
 androidx-activityCompose = "1.13.0"
 androidx-appcompat = "1.8.0"
 androidx-startup = "1.2.0"
 androidx-paging = "3.5.1"
-androidx-core-ktx = "1.19.0"
+androidx-core-ktx = "1.19.1"
 androidx-lifecycle = "2.11.0"
-androidx-navigation3 = "1.1.1"
+androidx-navigation3 = "1.1.2"
 androidx-lifecycle-navigation3 = "2.11.0"
 androidx-material-adaptive = "1.3.0-rc01"
-androidx-appfunction = "1.0.0-alpha11"
-androidx-appfunction-service = "1.0.0-alpha09"
+androidx-appfunction = "1.0.0-alpha12"
 
 androidx-test-junit = "1.3.0"
 desugar-jdk-libs = "2.1.5"
@@ -68,7 +67,6 @@ androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", 
 androidx-paging-testing = { group = "androidx.paging", name = "paging-testing", version.ref = "androidx-paging" }
 
 androidx-appfunctions = { group = "androidx.appfunctions", name = "appfunctions", version.ref = "androidx-appfunction" }
-androidx-appfunctions-service = { group = "androidx.appfunctions", name = "appfunctions-service", version.ref = "androidx-appfunction-service" }
 androidx-appfunctions-compiler = { group = "androidx.appfunctions", name = "appfunctions-compiler", version.ref = "androidx-appfunction" }
 
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

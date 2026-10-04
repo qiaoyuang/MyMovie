@@ -56,7 +56,6 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.koin.core)
     implementation(libs.androidx.appfunctions)
-    implementation(libs.androidx.appfunctions.service)
     ksp(libs.androidx.appfunctions.compiler)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     debugImplementation(libs.compose.ui.tooling)
