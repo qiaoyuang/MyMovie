@@ -1,5 +1,7 @@
 package com.qiaoyuang.movie.model
 
+import androidx.collection.MutableLongSet
+import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.qiaoyuang.movie.model.domain.Movie
@@ -31,10 +33,21 @@ internal class MoviePagingSource(
      *
      * Instance state is the right scope. A PagingSource lives for exactly one generation, and
      * Paging builds a new one on refresh, so the set is emptied precisely when the pages it
-     * describes are thrown away. A plain MutableSet needs no synchronisation: this source never
-     * sets a prevKey, so Paging only ever runs the initial load and then appends, one at a time.
+     * describes are thrown away — which is also what makes a refresh show those movies again
+     * rather than filtering them all out. No synchronisation is needed: this source never sets a
+     * prevKey, so Paging only ever runs the initial load and then appends, one at a time.
+     *
+     * A primitive set rather than mutableSetOf<Long>(): every TMDB id is far above Long's boxing
+     * cache, so the boxed form costs ~70 bytes per id against ~15, and allocates twenty throwaway
+     * boxes per page. Nothing here needs insertion order.
+     *
+     * **This assumes [PagingConfig.maxSize] stays unbounded, which is its default.** With a bound,
+     * Paging drops pages at the ends and reloads them when the user scrolls back — and every id in
+     * a reloaded page is already in this set, so the page would come back empty and its movies
+     * would silently vanish. Setting maxSize means tracking the ids per page instead, so that
+     * reloading one de-duplicates against the others only.
      */
-    private val emittedIds = mutableSetOf<Long>()
+    private val emittedIds = MutableLongSet()
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Movie> {
         // params.loadSize is deliberately ignored: the endpoint is paginated by page number,

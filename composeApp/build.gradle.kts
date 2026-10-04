@@ -71,6 +71,7 @@ kotlin {
             implementation(libs.compose.animation.graphics)
 
             implementation(libs.androidx.annotation)
+            implementation(libs.androidx.collection)
             implementation(libs.androidx.lifecycle.common)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.viewmodel.compose)

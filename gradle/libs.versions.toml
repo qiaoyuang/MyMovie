@@ -12,6 +12,7 @@ compose-material3 = "1.9.0"
 compose-icon-extended = "1.7.3"
 
 androidx-annotation = "1.10.0"
+androidx-collection = "1.6.0"
 androidx-activityCompose = "1.13.0"
 androidx-appcompat = "1.8.0"
 androidx-startup = "1.2.0"
@@ -60,6 +61,7 @@ androidx-lifecycle-viewmodel-navigation3 = { group = "org.jetbrains.androidx.lif
 androidx-material-adaptive-navigation3 = { group = "org.jetbrains.compose.material3.adaptive", name = "adaptive-navigation3", version.ref = "androidx-material-adaptive" }
 
 androidx-annotation = { group = "androidx.annotation", name = "annotation", version.ref = "androidx-annotation" }
+androidx-collection = { group = "androidx.collection", name = "collection", version.ref = "androidx-collection" }
 androidx-startup-runtime = { group = "androidx.startup", name = "startup-runtime", version.ref = "androidx-startup" }
 androidx-paging-common = { group = "androidx.paging", name = "paging-common", version.ref = "androidx-paging" }
 androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "androidx-paging" }
