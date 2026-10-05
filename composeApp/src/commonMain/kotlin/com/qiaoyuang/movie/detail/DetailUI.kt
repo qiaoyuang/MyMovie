@@ -105,7 +105,10 @@ private fun MovieDetail(movie: Movie) {
             AsyncImage(
                 model = APIService buildImageUrl it,
                 contentDescription = null,
-                modifier = getMovieBackDropModifier(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.7777f)
+                    .background(backdropPlaceholderColor),
             )
         }
         Spacer(height24Modifier)
@@ -226,7 +229,5 @@ private val height24Modifier = Modifier.height(24.dp)
 private val containerModifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)
 private val endPadding8Modifier = Modifier.padding(end = 8.dp)
 private val size14Modifier = Modifier.size(14.dp)
-@Composable
-private fun getMovieBackDropModifier() = Modifier.fillMaxWidth().aspectRatio(1.7777f).background(backdropPlaceholderColor)
 private val height8Modifier = Modifier.height(8.dp)
 private val horizontal8PaddingModifier = Modifier.padding(horizontal = 4.dp)

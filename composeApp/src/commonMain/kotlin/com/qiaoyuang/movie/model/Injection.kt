@@ -21,14 +21,12 @@ import io.ktor.serialization.kotlinx.json.json
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.parameter.parametersOf
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 
-@OptIn(ExperimentalSerializationApi::class)
 internal val mainModule = module {
     single<CoroutineDispatcher>(qualifier = GlobalDispatchers.DEFAULT) { Dispatchers.Default }
     single<CoroutineDispatcher>(qualifier = GlobalDispatchers.IO) { Dispatchers.IO }

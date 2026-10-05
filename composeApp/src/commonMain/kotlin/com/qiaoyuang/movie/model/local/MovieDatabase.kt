@@ -52,11 +52,11 @@ internal fun createMovieDatabase(path: DatabasePath = databasePath): Database = 
 // One list, used by both create and upgrade, so the two cannot drift.
 @OptIn(ExperimentalDSLDatabaseAPI::class)
 private fun DatabaseScope.createAllTables() {
-    CREATE(MovieEntityTable)
-    CREATE(GenreEntityTable)
-    CREATE(MovieGenreEntityTable)
-    CREATE(MovieListEntryEntityTable)
-    CREATE(ListRemoteKeyEntityTable)
+    MovieEntityTable.CREATE()
+    GenreEntityTable.CREATE()
+    MovieGenreEntityTable.CREATE()
+    MovieListEntryEntityTable.CREATE()
+    ListRemoteKeyEntityTable.CREATE()
 }
 
 @OptIn(ExperimentalDSLDatabaseAPI::class)
