@@ -1,7 +1,7 @@
 package com.qiaoyuang.movie.test
 
 import androidx.collection.IntObjectMap
-import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
+import com.qiaoyuang.movie.domain.SimilarMovieUseCase
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.domain.SimilarMovieShowModel
@@ -15,12 +15,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertSame
 import com.qiaoyuang.movie.model.MovieDataException
 
-class SimilarMovieUseCaseImplTest : BasicTest() {
+class SimilarMovieUseCaseTest : BasicTest() {
 
     @Test
     fun test_returns_success_with_movie_list() = runTest {
-        val useCase = SimilarMovieUseCaseImpl(MockedRepository(), mainThreadSurrogate, 1L)
-        val result = useCase()
+        val useCase = SimilarMovieUseCase(MockedRepository(), mainThreadSurrogate)
+        val result = useCase(1L)
         assertIs<Result.Success<List<SimilarMovieShowModel>?>>(result)
         assertEquals(MockedRepository.COUNT, result.data?.size)
     }
@@ -38,8 +38,8 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
             override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> =
                 throw AssertionError("the detail strip must not bypass the cache")
         }
-        val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
-        val result = useCase()
+        val useCase = SimilarMovieUseCase(repo, mainThreadSurrogate)
+        val result = useCase(1L)
         assertIs<Result.Success<List<SimilarMovieShowModel>?>>(result)
         assertEquals(MockedRepository.COUNT, result.data?.size)
     }
@@ -62,8 +62,8 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
                     )
                 )
         }
-        val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
-        val result = useCase()
+        val useCase = SimilarMovieUseCase(repo, mainThreadSurrogate)
+        val result = useCase(1L)
         assertIs<Result.Success<List<SimilarMovieShowModel>?>>(result)
         assertNull(result.data)
     }
@@ -75,8 +75,8 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
             override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> =
                 Result.Error(failure)
         }
-        val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
-        val result = useCase()
+        val useCase = SimilarMovieUseCase(repo, mainThreadSurrogate)
+        val result = useCase(1L)
         assertIs<Result.Error<MovieDataException>>(result)
         assertSame(failure, result.error)
     }
@@ -88,9 +88,30 @@ class SimilarMovieUseCaseImplTest : BasicTest() {
             override suspend fun getMovieGenreMap(): Result<IntObjectMap<String>, MovieDataException> =
                 Result.Error(failure)
         }
-        val useCase = SimilarMovieUseCaseImpl(repo, mainThreadSurrogate, 1L)
-        val result = useCase()
+        val useCase = SimilarMovieUseCase(repo, mainThreadSurrogate)
+        val result = useCase(1L)
         assertIs<Result.Error<MovieDataException>>(result)
         assertSame(failure, result.error)
+    }
+
+    /**
+     * What making the movie an argument is for: one instance, with no state, serves whichever
+     * movie it is asked about. It used to be built per movie, with the id fixed at construction.
+     */
+    @Test
+    fun test_one_instance_serves_any_movie() = runTest {
+        val requested = mutableListOf<Long>()
+        val repo = object : MovieRepository by MockedRepository() {
+            override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> {
+                requested += movieId
+                return MockedRepository().similarMoviesFirstPage(movieId)
+            }
+        }
+        val useCase = SimilarMovieUseCase(repo, mainThreadSurrogate)
+
+        useCase(550L)
+        useCase(680L)
+
+        assertEquals(listOf(550L, 680L), requested)
     }
 }

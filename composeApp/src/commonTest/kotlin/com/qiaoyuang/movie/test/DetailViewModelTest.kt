@@ -3,7 +3,7 @@ package com.qiaoyuang.movie.test
 import app.cash.turbine.test
 import com.qiaoyuang.movie.basicui.ErrorKind
 import com.qiaoyuang.movie.detail.DetailViewModel
-import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
+import com.qiaoyuang.movie.domain.SimilarMovieUseCase
 import com.qiaoyuang.movie.model.MovieRepository
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -14,7 +14,7 @@ class DetailViewModelTest : BasicTest() {
 
     private fun detailViewModel(repository: MovieRepository) = DetailViewModel(
         repository,
-        SimilarMovieUseCaseImpl(repository, mainThreadSurrogate, 1L),
+        SimilarMovieUseCase(repository, mainThreadSurrogate),
         1L,
     )
 

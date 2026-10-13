@@ -159,8 +159,8 @@ internal class MovieRepositoryImpl(
     }
 
     /**
-     * Rebuilt per call rather than memoised: nineteen entries, and the one caller
-     * (SimilarMovieUseCase) caches its own result anyway.
+     * Rebuilt per call rather than memoised: nineteen entries, built once each time a detail
+     * screen opens, which costs less than keeping a memo in step with the table it came from.
      */
     private fun List<MovieGenre>.toGenreMap(): IntObjectMap<String> {
         val map = MutableIntObjectMap<String>(size)

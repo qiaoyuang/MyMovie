@@ -3,7 +3,6 @@ package com.qiaoyuang.movie.model
 import com.qiaoyuang.movie.basicui.MovieTheme
 import com.qiaoyuang.movie.detail.DetailViewModel
 import com.qiaoyuang.movie.domain.SimilarMovieUseCase
-import com.qiaoyuang.movie.domain.SimilarMovieUseCaseImpl
 import com.qiaoyuang.movie.home.HomeViewModel
 import com.qiaoyuang.movie.model.APIService.Companion.API_KEY_PARAM
 import com.qiaoyuang.movie.model.APIService.Companion.BASE_URL
@@ -23,7 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 import kotlinx.serialization.json.Json
 import org.koin.core.module.dsl.viewModel
-import org.koin.core.parameter.parametersOf
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 
@@ -60,15 +58,14 @@ internal val mainModule = module {
     single { createMovieDatabase() }
     single<MovieLocalDataSource> { MovieLocalDataSourceImpl(get(), get(GlobalDispatchers.IO)) }
     single<MovieRepository> { MovieRepositoryImpl(get(), get(), get(GlobalDispatchers.DEFAULT)) }
-    factory<SimilarMovieUseCase> { SimilarMovieUseCaseImpl(get(), get(GlobalDispatchers.DEFAULT), it.get()) }
+    factory { SimilarMovieUseCase(get(), get(GlobalDispatchers.DEFAULT)) }
     viewModel { HomeViewModel(get(), get()) }
     viewModel { SearchViewModel(get(), get()) }
     viewModel {
-        val movieId = it.get<Long>()
         DetailViewModel(
             repository = get(),
-            similarMovieUseCase = get { parametersOf(movieId) },
-            movieId = movieId,
+            similarMovieUseCase = get(),
+            movieId = it.get(),
         )
     }
     viewModel { SimilarMoviesViewModel(get(), get(), it.get()) }

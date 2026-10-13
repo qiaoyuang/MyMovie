@@ -28,7 +28,7 @@ internal class DetailViewModel(
     fun updateUI() = viewModelScope.launch {
         val (detailResult, similarMovieResult) = supervisorScope {
             val detailDeferred = async { repository.movieDetail(movieId) }
-            val similarMovieDeferred = async { similarMovieUseCase() }
+            val similarMovieDeferred = async { similarMovieUseCase(movieId) }
             detailDeferred.await() to similarMovieDeferred.await()
         }
         movieDetailState.value = when (detailResult) {
