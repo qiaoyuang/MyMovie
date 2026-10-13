@@ -32,7 +32,6 @@ private const val DATABASE_VERSION = 2
  * Database wraps a single connection and serialises statement execution behind its own mutex,
  * so re-opening per query would only add cost.
  */
-@OptIn(ExperimentalDSLDatabaseAPI::class)
 internal fun createMovieDatabase(path: DatabasePath = databasePath): Database = Database(
     DSLDBConfiguration(
         name = DATABASE_NAME,
@@ -50,7 +49,6 @@ internal fun createMovieDatabase(path: DatabasePath = databasePath): Database = 
 )
 
 // One list, used by both create and upgrade, so the two cannot drift.
-@OptIn(ExperimentalDSLDatabaseAPI::class)
 private fun DatabaseScope.createAllTables() {
     MovieEntityTable.CREATE()
     GenreEntityTable.CREATE()
@@ -59,11 +57,17 @@ private fun DatabaseScope.createAllTables() {
     ListRemoteKeyEntityTable.CREATE()
 }
 
+/**
+ * IF EXISTS, so the step is repeatable: a plain DROP of a table a given installation never had
+ * would fail the upgrade. That becomes reachable the moment a later version adds a table — a
+ * database still on version 1 would then be asked to drop it on its way to version 3. Worth the
+ * one opt-in that the IF EXISTS form still carries in 2.5.0.
+ */
 @OptIn(ExperimentalDSLDatabaseAPI::class)
 private fun DatabaseScope.dropAllTables() {
-    MovieEntityTable.DROP()
-    GenreEntityTable.DROP()
-    MovieGenreEntityTable.DROP()
-    MovieListEntryEntityTable.DROP()
-    ListRemoteKeyEntityTable.DROP()
+    DROP_IF_EXISTS(MovieEntityTable)
+    DROP_IF_EXISTS(GenreEntityTable)
+    DROP_IF_EXISTS(MovieGenreEntityTable)
+    DROP_IF_EXISTS(MovieListEntryEntityTable)
+    DROP_IF_EXISTS(ListRemoteKeyEntityTable)
 }
