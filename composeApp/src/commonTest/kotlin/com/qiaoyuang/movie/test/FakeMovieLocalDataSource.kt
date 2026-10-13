@@ -42,8 +42,6 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
             .mapNotNull { moviesById[it.movieId] }
     }
 
-    override suspend fun countIn(listKey: String): Int = entriesByList[listKey].orEmpty().size
-
     override suspend fun cursorOf(listKey: String): ListCursor? = cursors[listKey]
 
     override suspend fun replaceList(

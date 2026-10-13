@@ -3,8 +3,6 @@ package com.qiaoyuang.movie.model.local
 import com.ctrip.sqllin.dsl.Database
 import com.ctrip.sqllin.dsl.DatabaseScope
 import com.ctrip.sqllin.dsl.sql.X
-import com.ctrip.sqllin.dsl.sql.clause.AS
-import com.ctrip.sqllin.dsl.sql.clause.count
 import com.ctrip.sqllin.dsl.sql.clause.EQ
 import com.ctrip.sqllin.dsl.sql.clause.IN
 import com.ctrip.sqllin.dsl.sql.clause.LIMIT
@@ -48,18 +46,6 @@ internal class MovieLocalDataSourceImpl(
             val ordered = entries?.getResults().orEmpty()
             if (ordered.isEmpty()) emptyList() else moviesByIds(ordered.map(MovieListEntryEntity::movieId))
         }
-
-    /** A real COUNT(*), read into [ListEntryCount] — see its doc for why the type exists. */
-    override suspend fun countIn(listKey: String): Int = withContext(ioDispatcher) {
-        var count: SelectStatement<ListEntryCount>? = null
-        database suspendedScope {
-            MovieListEntryEntityTable { table ->
-                count = table SELECT (count(X) AS ListEntryCount::entries) WHERE (table.listKey EQ listKey)
-            }
-        }
-        // An aggregate without GROUP BY always returns exactly one row, zero included.
-        count?.getResults()?.single()?.entries?.toInt() ?: 0
-    }
 
     override suspend fun cursorOf(listKey: String): ListCursor? = withContext(ioDispatcher) {
         var keys: SelectStatement<ListRemoteKeyEntity>? = null

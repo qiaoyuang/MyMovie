@@ -36,9 +36,6 @@ internal interface MovieLocalDataSource {
     /** One page of a cached list, ordered as the server returned it. */
     suspend fun moviesIn(listKey: String, limit: Int, offset: Int): List<Movie>
 
-    /** How many movies the list holds; 0 means nothing is cached for it. */
-    suspend fun countIn(listKey: String): Int
-
     suspend fun cursorOf(listKey: String): ListCursor?
 
     /** REFRESH: discards the list and stores [movies] as its first page. */

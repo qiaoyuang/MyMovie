@@ -82,11 +82,3 @@ internal data class ListRemoteKeyEntity(
     val totalPages: Int,
     val lastRefreshedAt: Long,
 )
-
-/**
- * Not a table — the result type of a COUNT(*). sqllin reads a selected expression into a
- * property named with AS, so an aggregate needs a type to land in; Long because that is what
- * SQLite returns for count.
- */
-@Serializable
-internal data class ListEntryCount(val entries: Long)
