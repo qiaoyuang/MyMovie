@@ -47,10 +47,6 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-ksp {
-    arg("appfunctions:aggregateAppFunctions", "true")
-}
-
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
