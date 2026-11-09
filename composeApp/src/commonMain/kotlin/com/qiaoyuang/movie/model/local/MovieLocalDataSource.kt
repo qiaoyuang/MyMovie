@@ -1,5 +1,6 @@
 package com.qiaoyuang.movie.model.local
 
+import androidx.paging.PagingSource
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 
@@ -19,21 +20,23 @@ internal data class ListCursor(
 
 /**
  * The offline cache, as the rest of the data layer sees it. The sqllin Database is visible only
- * to the implementation, so every write passes through here and can announce itself to
- * [invalidationTracker].
+ * to the implementation.
  *
- * An interface, for two reasons: the RemoteMediator and PagingSource built on top of it in later
- * phases can be tested against a fake, and sqllin's Android driver talks to
- * android.database.sqlite, which host tests cannot load — so the real implementation is the one
- * part of this layer with no automated coverage, and it is kept as thin as possible.
+ * An interface so the RemoteMediator and the repository can be tested against an in-memory fake.
+ * The implementation itself is tested against a real database, on Robolectric.
  *
  * Implementations are main-safe.
  */
 internal interface MovieLocalDataSource {
 
-    val invalidationTracker: TableInvalidationTracker
+    /**
+     * A cached list, paged straight out of the database. It invalidates itself whenever a write
+     * through the same database changes a table it reads — which is how the mediator's writes
+     * reach the screen without anything announcing them.
+     */
+    fun pagingSource(listKey: String): PagingSource<Int, MovieEntity>
 
-    /** One page of a cached list, ordered as the server returned it. */
+    /** One page of a cached list, ordered as the server returned it — for the detail strip. */
     suspend fun moviesIn(listKey: String, limit: Int, offset: Int): List<Movie>
 
     suspend fun cursorOf(listKey: String): ListCursor?

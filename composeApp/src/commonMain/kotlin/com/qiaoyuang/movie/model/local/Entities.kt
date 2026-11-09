@@ -13,13 +13,16 @@ import kotlinx.serialization.Serializable
  * what the UI needs, so a change to TMDB's wire format does not become a schema migration.
  *
  * No foreign keys: SQLite only enforces them after `PRAGMA foreign_keys=1`, and nothing in this
- * app deletes a movie or a genre row, so a cascade would never fire. The two places that need
- * referential cleanup (a movie's genres changing) delete explicitly instead.
+ * app deletes a movie or a genre row, so a cascade would never fire.
  */
 
 /**
  * One movie, shared by every list. A non-null Long @PrimaryKey means the caller supplies the
  * key — TMDB's id — and it is still an INTEGER PRIMARY KEY, so it is the rowid itself.
+ *
+ * Its genre ids are a column of their own rather than a junction table: nothing queries the
+ * database by genre (search filters in Kotlin, and is online-only), so the table did no
+ * relational work, and keeping them on the row lets one SELECT read a whole list page.
  */
 @DBRow("movies")
 @Serializable
@@ -30,6 +33,7 @@ internal data class MovieEntity(
     val posterPath: String?,
     val backdropPath: String?,
     val voteAverage: Double?,
+    @Serializable(with = GenreIdsAsJson::class) val genreIds: List<Int>?,
 )
 
 /**
@@ -40,16 +44,6 @@ internal data class MovieEntity(
 internal data class GenreEntity(
     @PrimaryKey val id: Int,
     val name: String,
-)
-
-/**
- * Which genres a movie belongs to. Rebuilds Movie.genreIds on read.
- */
-@DBRow("movie_genres")
-@Serializable
-internal data class MovieGenreEntity(
-    @CompositePrimaryKey val movieId: Long,
-    @CompositePrimaryKey val genreId: Int,
 )
 
 /**

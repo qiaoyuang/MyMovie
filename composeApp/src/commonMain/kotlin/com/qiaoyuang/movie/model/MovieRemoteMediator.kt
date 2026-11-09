@@ -4,7 +4,6 @@ import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
-import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
 import com.qiaoyuang.movie.model.local.cursorAfter
@@ -14,19 +13,21 @@ import kotlinx.coroutines.CancellationException
 
 /**
  * The network half of an offline-first paged list: it only ever writes to the cache, and the
- * DB-backed [MovieListPagingSource] is what the UI actually reads. That split is what lets a
+ * paging source the cache provides is what the UI actually reads. That split is what lets a
  * warm cache render before any request is made, and at all when there is no network.
  *
  * Generic over the endpoint the same way [MoviePagingSource] is — top-rated and similar-movies
- * differ only in [listKey] and [fetchPage].
+ * differ only in [listKey] and [fetchPage] — and over the row type [T], which it never reads:
+ * Paging requires a mediator to share its source's item type, and where it is in the list comes
+ * from the cursor, not from the rows Paging holds.
  */
 @OptIn(ExperimentalPagingApi::class)
-internal class MovieRemoteMediator(
+internal class MovieRemoteMediator<T : Any>(
     private val listKey: String,
     private val local: MovieLocalDataSource,
     private val fetchPage: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
     private val now: () -> Long = ::currentTimeMillis,
-) : RemoteMediator<Int, Movie>() {
+) : RemoteMediator<Int, T>() {
 
     /**
      * Whether opening the screen should hit the network at all. SKIP leaves the PagingSource as
@@ -41,7 +42,7 @@ internal class MovieRemoteMediator(
             InitializeAction.SKIP_INITIAL_REFRESH
     }
 
-    override suspend fun load(loadType: LoadType, state: PagingState<Int, Movie>): MediatorResult {
+    override suspend fun load(loadType: LoadType, state: PagingState<Int, T>): MediatorResult {
         // The list only grows downwards; nothing ever sets a prevKey.
         if (loadType == LoadType.PREPEND) return MediatorResult.Success(endOfPaginationReached = true)
 

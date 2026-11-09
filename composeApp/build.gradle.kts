@@ -105,6 +105,7 @@ kotlin {
 
             implementation(libs.sqllin.driver)
             implementation(libs.sqllin.dsl)
+            implementation(libs.sqllin.dsl.paging)
 
             implementation(libs.mockative)
         }
@@ -132,7 +133,22 @@ kotlin {
         iosMain.dependencies {
             implementation(libs.ktor.darwin)
         }
+
+        // sqllin's Android driver talks to android.database.sqlite, which the stubbed android.jar
+        // of a plain host test cannot run, so the tests that touch a real database run on
+        // Robolectric. Everything in commonTest still runs without it.
+        getByName("androidHostTest").dependencies {
+            implementation(libs.junit)
+            implementation(libs.androidx.test.core)
+            implementation(libs.robolectric)
+        }
     }
+}
+
+// Robolectric reflects into JDK internals when it sets up newer Android SDKs, which the module
+// system blocks by default since JDK 17.
+tasks.withType<Test>().matching { it.name == "testAndroidHostTest" }.configureEach {
+    jvmArgs("--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
 }
 
 dependencies {

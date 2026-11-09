@@ -1,6 +1,7 @@
 package com.qiaoyuang.movie.test
 
 import androidx.collection.IntObjectMap
+import androidx.paging.PagingData
 import androidx.collection.MutableIntObjectMap
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
@@ -8,6 +9,8 @@ import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.MovieDataException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 internal class MockedRepository : MovieRepository {
 
@@ -74,6 +77,10 @@ internal class MockedRepository : MovieRepository {
 
     override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> =
         Result.Success(generateMovies(COUNT))
+
+    override fun pagedTopRatedMovies(): Flow<PagingData<Movie>> = flowOf(PagingData.empty())
+
+    override fun pagedSimilarMovies(movieId: Long): Flow<PagingData<Movie>> = flowOf(PagingData.empty())
 
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> = Result.Success(
         listOf(

@@ -1,12 +1,17 @@
 package com.qiaoyuang.movie.model.local
 
+import androidx.paging.PagingSource
 import com.ctrip.sqllin.dsl.Database
 import com.ctrip.sqllin.dsl.DatabaseScope
+import com.ctrip.sqllin.dsl.annotation.ExperimentalDSLDatabaseAPI
+import com.ctrip.sqllin.dsl.paging.pagingSource
 import com.ctrip.sqllin.dsl.sql.X
 import com.ctrip.sqllin.dsl.sql.clause.EQ
 import com.ctrip.sqllin.dsl.sql.clause.IN
+import com.ctrip.sqllin.dsl.sql.clause.INNER_JOIN
 import com.ctrip.sqllin.dsl.sql.clause.LIMIT
 import com.ctrip.sqllin.dsl.sql.clause.OFFSET
+import com.ctrip.sqllin.dsl.sql.clause.ON
 import com.ctrip.sqllin.dsl.sql.clause.ORDER_BY
 import com.ctrip.sqllin.dsl.sql.clause.OrderByWay.ASC
 import com.ctrip.sqllin.dsl.sql.clause.WHERE
@@ -17,8 +22,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 
 /**
- * The only holder of the sqllin [Database]. Keeping the connection private is what makes
- * [invalidationTracker] trustworthy: no write can happen without going through a method here.
+ * The only holder of the sqllin [Database].
  *
  * Every method is a single sqllin scope, and each scope's writes are one transaction, so none of
  * them needs a lock of its own: sqllin serialises the execution of scopes, and conflicts between
@@ -32,19 +36,15 @@ internal class MovieLocalDataSourceImpl(
     private val ioDispatcher: CoroutineDispatcher,
 ) : MovieLocalDataSource {
 
-    override val invalidationTracker: TableInvalidationTracker = TableInvalidationTracker()
+    @OptIn(ExperimentalDSLDatabaseAPI::class)
+    override fun pagingSource(listKey: String): PagingSource<Int, MovieEntity> =
+        database.pagingSource(ioDispatcher) { listPage(listKey) }
 
     override suspend fun moviesIn(listKey: String, limit: Int, offset: Int): List<Movie> =
         withContext(ioDispatcher) {
-            var entries: SelectStatement<MovieListEntryEntity>? = null
-            database suspendedScope {
-                MovieListEntryEntityTable { table ->
-                    entries = table SELECT WHERE(table.listKey EQ listKey) ORDER_BY
-                        (table.position to ASC) LIMIT limit OFFSET offset
-                }
-            }
-            val ordered = entries?.getResults().orEmpty()
-            if (ordered.isEmpty()) emptyList() else moviesByIds(ordered.map(MovieListEntryEntity::movieId))
+            var page: SelectStatement<MovieEntity>? = null
+            database suspendedScope { page = listPage(listKey) LIMIT limit OFFSET offset }
+            page?.getResults().orEmpty().map(MovieEntity::toDomain)
         }
 
     override suspend fun cursorOf(listKey: String): ListCursor? = withContext(ioDispatcher) {
@@ -70,7 +70,6 @@ internal class MovieLocalDataSourceImpl(
                 writeCursor(listKey, cursor)
             }
         }
-        invalidationTracker.notifyChanged(listKey)
     }
 
     override suspend fun appendPage(
@@ -88,17 +87,11 @@ internal class MovieLocalDataSourceImpl(
                 writeCursor(listKey, cursor)
             }
         }
-        invalidationTracker.notifyChanged(listKey)
     }
 
     override suspend fun movie(id: Long): Movie? =
         withContext(ioDispatcher) { moviesByIds(listOf(id)).firstOrNull() }
 
-    /**
-     * Does not notify [invalidationTracker]: it cannot know which lists hold these movies, and
-     * the caller (the detail screen) reads a movie directly rather than through a list. A cached
-     * list therefore keeps showing the older title until that list is refreshed.
-     */
     override suspend fun upsertMovies(movies: List<Movie>) = withContext(ioDispatcher) {
         database suspendedScope { transaction { writeMovies(movies.distinctMovies()) } }
     }
@@ -134,20 +127,23 @@ internal class MovieLocalDataSourceImpl(
         }
 
     /**
-     * Two queries and an in-memory join instead of SQL JOINs: a sqllin JOIN needs a result class
-     * matching the joined column list, which would mean a third schema type per query shape.
-     * Both queries hit a primary-key index and return at most one page of rows.
+     * A list's movies in order, as one SELECT: its entries joined to their rows. One statement is
+     * what lets the paging source read a page, and what makes the source watch both tables — so
+     * a refreshed movie title reaches a list on screen as well as a new page does.
      */
+    @OptIn(ExperimentalDSLDatabaseAPI::class)
+    private fun DatabaseScope.listPage(listKey: String) =
+        (MovieListEntryEntityTable INNER_JOIN MovieEntityTable ON
+            (MovieListEntryEntityTable.movieId EQ MovieEntityTable.id)) SELECT
+            WHERE<MovieEntity>(MovieListEntryEntityTable.listKey EQ listKey) ORDER_BY
+            (MovieListEntryEntityTable.position to ASC)
+
     private suspend fun moviesByIds(ids: List<Long>): List<Movie> {
         var movies: SelectStatement<MovieEntity>? = null
-        var crossRefs: SelectStatement<MovieGenreEntity>? = null
         database suspendedScope {
             MovieEntityTable { table -> movies = table SELECT WHERE(table.id IN ids) }
-            MovieGenreEntityTable { table -> crossRefs = table SELECT WHERE(table.movieId IN ids) }
         }
-        val byId = movies?.getResults().orEmpty()
-            .toDomain(crossRefs?.getResults().orEmpty())
-            .associateBy(Movie::id)
+        val byId = movies?.getResults().orEmpty().associate { it.id to it.toDomain() }
         // SQLite promises no ordering for IN, so the caller's order is reapplied here.
         return ids.mapNotNull(byId::get)
     }
@@ -159,12 +155,9 @@ internal class MovieLocalDataSourceImpl(
      */
     private fun DatabaseScope.writeMovies(movies: List<Movie>) {
         if (movies.isEmpty()) return
+        // Replacing the row replaces its genre ids with it, so a genre set that shrank between
+        // fetches needs no separate cleanup.
         MovieEntityTable { table -> table INSERT_OR_REPLACE movies.map(Movie::toEntity) }
-        // A movie's genre set can shrink between fetches, so its rows are replaced, not merged.
-        val ids = movies.map(Movie::id)
-        MovieGenreEntityTable { table -> table DELETE WHERE(table.movieId IN ids) }
-        val crossRefs = movies.flatMap(Movie::toGenreCrossRefs)
-        if (crossRefs.isNotEmpty()) MovieGenreEntityTable { table -> table INSERT crossRefs }
     }
 
     /**

@@ -50,7 +50,7 @@ class MovieRemoteMediatorTest {
         local: FakeMovieLocalDataSource,
         now: Long = nowMillis,
         fetch: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
-    ) = MovieRemoteMediator(listKey, local, fetch, now = { now })
+    ) = MovieRemoteMediator<Movie>(listKey, local, fetch, now = { now })
 
     // ---- initialize: the TTL is the only thing that forces a network refresh ----
 

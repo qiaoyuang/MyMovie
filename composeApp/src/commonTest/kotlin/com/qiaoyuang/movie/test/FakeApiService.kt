@@ -26,8 +26,25 @@ internal class FakeApiService(
     var genreCalls = 0
         private set
     val similarPagesRequested = mutableListOf<Int>()
+    val topRatedPagesRequested = mutableListOf<Int>()
 
-    override suspend infix fun fetchTopRated(page: Int): ApiMovieResponseDTO = unused()
+    /** How many pages the top-rated list has. */
+    var topRatedTotalPages = 4
+
+    /** The ids on each top-rated page; by default page n holds (n-1)*20+1 .. n*20. */
+    var topRatedIds: (page: Int) -> List<Long> = { page -> ((page - 1L) * 20 + 1..page * 20L).toList() }
+
+    override suspend infix fun fetchTopRated(page: Int): ApiMovieResponseDTO {
+        topRatedPagesRequested += page
+        failIfOffline()
+        val ids = topRatedIds(page)
+        return ApiMovieResponseDTO(
+            page = page,
+            results = ids.map { id -> movie(id, title = "top $id", genreIds = listOf(28, 12)) },
+            totalPages = topRatedTotalPages,
+            totalResults = topRatedTotalPages * 20,
+        )
+    }
 
     override suspend infix fun movieDetail(movieId: Long): ApiMovieDTO {
         movieDetailCalls++
@@ -49,17 +66,7 @@ internal class FakeApiService(
         val start = (page - 1L) * 20 + 1
         return ApiMovieResponseDTO(
             page = page,
-            results = (start until start + 20).map { id ->
-                ApiMovieDTO(
-                    id = id,
-                    title = "similar $id",
-                    overview = "overview $id",
-                    posterPath = "/poster$id",
-                    backdropPath = null,
-                    voteAverage = 6.0,
-                    genreIds = listOf(12),
-                )
-            },
+            results = (start until start + 20).map { id -> movie(id, title = "similar $id", genreIds = listOf(12)) },
             totalPages = 3,
             totalResults = 60,
         )
@@ -72,6 +79,16 @@ internal class FakeApiService(
     }
 
     override suspend fun search(word: String, page: Int): ApiMovieResponseDTO = unused()
+
+    private fun movie(id: Long, title: String, genreIds: List<Int>) = ApiMovieDTO(
+        id = id,
+        title = title,
+        overview = "overview $id",
+        posterPath = "/poster$id",
+        backdropPath = null,
+        voteAverage = 6.0,
+        genreIds = genreIds,
+    )
 
     private fun failIfOffline() {
         if (offline) throw RuntimeException("offline")

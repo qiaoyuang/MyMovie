@@ -59,7 +59,7 @@ internal val mainModule = module {
     single<MovieLocalDataSource> { MovieLocalDataSourceImpl(get(), get(GlobalDispatchers.IO)) }
     single<MovieRepository> { MovieRepositoryImpl(get(), get(), get(GlobalDispatchers.DEFAULT)) }
     factory { SimilarMovieUseCase(get(), get(GlobalDispatchers.DEFAULT)) }
-    viewModel { HomeViewModel(get(), get()) }
+    viewModel { HomeViewModel(get()) }
     viewModel { SearchViewModel(get(), get()) }
     viewModel {
         DetailViewModel(
@@ -68,7 +68,7 @@ internal val mainModule = module {
             movieId = it.get(),
         )
     }
-    viewModel { SimilarMoviesViewModel(get(), get(), it.get()) }
+    viewModel { SimilarMoviesViewModel(get(), it.get()) }
 }
 
 /**

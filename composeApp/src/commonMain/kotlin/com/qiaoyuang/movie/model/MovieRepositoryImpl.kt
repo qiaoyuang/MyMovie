@@ -2,17 +2,26 @@ package com.qiaoyuang.movie.model
 
 import androidx.collection.IntObjectMap
 import androidx.collection.MutableIntObjectMap
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.map
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.domain.toDomain
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
+import com.qiaoyuang.movie.model.local.TOP_RATED_LIST_KEY
 import com.qiaoyuang.movie.model.local.cursorAfter
 import com.qiaoyuang.movie.model.local.currentTimeMillis
 import com.qiaoyuang.movie.model.local.isStale
 import com.qiaoyuang.movie.model.local.similarListKey
+import com.qiaoyuang.movie.model.local.toDomain
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -81,6 +90,30 @@ internal class MovieRepositoryImpl(
                 if (cached.isNotEmpty()) Result.Success(cached) else fetched
         }
     }
+
+    override fun pagedTopRatedMovies(): Flow<PagingData<Movie>> =
+        offlineFirst(TOP_RATED_LIST_KEY) { page -> fetchTopRated(page) }
+
+    override fun pagedSimilarMovies(movieId: Long): Flow<PagingData<Movie>> =
+        offlineFirst(similarListKey(movieId)) { page -> similarMovies(movieId, page) }
+
+    /**
+     * Built here rather than in the ViewModels, which used to hold the mediator and the local data
+     * source themselves: the guide makes repositories the only entry point to the data layer, and
+     * this Pager joins a network source, a database source and the entity-to-domain mapping, all
+     * of which is data-layer work. The page state stays the ViewModel's, through cachedIn.
+     */
+    @OptIn(ExperimentalPagingApi::class)
+    private fun offlineFirst(
+        listKey: String,
+        fetchPage: suspend (page: Int) -> Result<MovieResponse, MovieDataException>,
+    ): Flow<PagingData<Movie>> =
+        Pager(
+            // No total count is shown, so there is nothing for placeholders to stand in for.
+            config = PagingConfig(pageSize = MOVIE_PAGE_SIZE, enablePlaceholders = false),
+            remoteMediator = MovieRemoteMediator(listKey, local, fetchPage, now),
+            pagingSourceFactory = { local.pagingSource(listKey) },
+        ).flow.map { page -> page.map { it.toDomain() } }
 
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> =
         wrap { service.fetchMovieGenre().genres.map { it.toDomain() } }

@@ -5,6 +5,7 @@ import com.ctrip.sqllin.dsl.DSLDBConfiguration
 import com.ctrip.sqllin.dsl.Database
 import com.ctrip.sqllin.dsl.DatabaseScope
 import com.ctrip.sqllin.dsl.annotation.ExperimentalDSLDatabaseAPI
+import com.ctrip.sqllin.dsl.sql.withName
 
 /**
  * Where the database file lives. Android needs a Context and iOS needs a directory string, so
@@ -15,13 +16,15 @@ internal expect val databasePath: DatabasePath
 internal const val DATABASE_NAME = "movie_cache.db"
 
 /**
- * 2 is SQLlin 2.4.0's DDL: single-column keys moved from @CompositePrimaryKey to @PrimaryKey,
- * which makes movies.id a rowid alias instead of a BIGINT column with its own index, and
- * composite-key columns are now declared NOT NULL. SQLlin never migrates an existing table, and
- * the create block only runs on creation, so without a version bump an installed app would keep
- * the old schema forever.
+ * 3 moves each movie's genre ids into a column of `movies` and drops the `movie_genres` junction
+ * table, which lost their order. (2 was SQLlin 2.4.0's DDL for the keys.) SQLlin never migrates
+ * an existing table, and the create block only runs on creation, so without a version bump an
+ * installed app would keep the old schema forever.
  */
-private const val DATABASE_VERSION = 2
+private const val DATABASE_VERSION = 3
+
+/** Version 2's genre junction table, whose class is gone; dropped by name on upgrade. */
+private const val LEGACY_MOVIE_GENRES = "movie_genres"
 
 /**
  * Creates the cache database. DSLDBConfiguration lets `create` be written with the same DSL as
@@ -52,7 +55,6 @@ internal fun createMovieDatabase(path: DatabasePath = databasePath): Database = 
 private fun DatabaseScope.createAllTables() {
     MovieEntityTable.CREATE()
     GenreEntityTable.CREATE()
-    MovieGenreEntityTable.CREATE()
     MovieListEntryEntityTable.CREATE()
     ListRemoteKeyEntityTable.CREATE()
 }
@@ -67,7 +69,8 @@ private fun DatabaseScope.createAllTables() {
 private fun DatabaseScope.dropAllTables() {
     DROP_IF_EXISTS(MovieEntityTable)
     DROP_IF_EXISTS(GenreEntityTable)
-    DROP_IF_EXISTS(MovieGenreEntityTable)
+    // DROP only uses the table's name, so any table's shape will do for one that has no class.
+    DROP_IF_EXISTS(GenreEntityTable.withName(LEGACY_MOVIE_GENRES))
     DROP_IF_EXISTS(MovieListEntryEntityTable)
     DROP_IF_EXISTS(ListRemoteKeyEntityTable)
 }

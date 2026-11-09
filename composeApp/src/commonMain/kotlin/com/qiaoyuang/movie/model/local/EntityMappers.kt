@@ -5,10 +5,9 @@ import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 
 /**
- * Domain <-> entity mapping, plus the two list invariants (position numbering and page-overlap
- * de-duplication). All pure functions, so they are testable without a SQLite connection —
- * which matters here because sqllin's Android driver is android.database.sqlite-backed and
- * cannot run against the stubbed android.jar used by host tests.
+ * Domain <-> entity mapping, plus the position numbering of a list. Pure functions, so they are
+ * testable without a database; what SQLite itself decides — page-overlap de-duplication, the
+ * genre id column — is tested against a real one, in MovieLocalDataSourceImplTest.
  */
 
 internal fun Movie.toEntity(): MovieEntity = MovieEntity(
@@ -18,12 +17,10 @@ internal fun Movie.toEntity(): MovieEntity = MovieEntity(
     posterPath = posterPath,
     backdropPath = backdropPath,
     voteAverage = voteAverage,
+    genreIds = genreIds,
 )
 
-/**
- * Genres live in their own table, so they are handed back in separately on read.
- */
-internal fun MovieEntity.toDomain(genreIds: List<Int>?): Movie = Movie(
+internal fun MovieEntity.toDomain(): Movie = Movie(
     id = id,
     title = title,
     overview = overview,
@@ -32,18 +29,6 @@ internal fun MovieEntity.toDomain(genreIds: List<Int>?): Movie = Movie(
     voteAverage = voteAverage,
     genreIds = genreIds,
 )
-
-internal fun Movie.toGenreCrossRefs(): List<MovieGenreEntity> =
-    genreIds?.map { MovieGenreEntity(movieId = id, genreId = it) } ?: emptyList()
-
-/**
- * Rebuilds each movie's genreIds from the junction rows. A movie with no rows gets null rather
- * than an empty list, matching what the API sends when it omits genre_ids.
- */
-internal fun List<MovieEntity>.toDomain(crossRefs: List<MovieGenreEntity>): List<Movie> {
-    val byMovie = crossRefs.groupBy(MovieGenreEntity::movieId)
-    return map { entity -> entity.toDomain(byMovie[entity.id]?.map(MovieGenreEntity::genreId)) }
-}
 
 /**
  * The cursor a freshly fetched page implies. Shared so the one rule that decides when a list has
@@ -96,9 +81,8 @@ internal fun listEntriesFor(
 }
 
 /**
- * A page can repeat a movie inside itself, which the (listKey, movieId) key would reject — and
- * which would also give that movie two rows in the genre junction table, whose insert is a plain
- * one. Overlap *between* pages is handled by INSERT OR IGNORE instead; see writeEntries.
+ * A page can repeat a movie inside itself, which would number it twice. Overlap *between* pages
+ * is handled by INSERT OR IGNORE instead; see writeEntries.
  */
 internal fun List<Movie>.distinctMovies(): List<Movie> = distinctBy(Movie::id)
 

@@ -1,12 +1,13 @@
 package com.qiaoyuang.movie.test
 
+import androidx.paging.PagingSource
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.local.FIRST_PAGE
 import com.qiaoyuang.movie.model.local.ListCursor
+import com.qiaoyuang.movie.model.local.MovieEntity
 import com.qiaoyuang.movie.model.local.MovieListEntryEntity
 import com.qiaoyuang.movie.model.local.MovieLocalDataSource
-import com.qiaoyuang.movie.model.local.TableInvalidationTracker
 import com.qiaoyuang.movie.model.local.distinctMovies
 import com.qiaoyuang.movie.model.local.listEntriesFor
 
@@ -21,7 +22,13 @@ import com.qiaoyuang.movie.model.local.listEntriesFor
  */
 internal class FakeMovieLocalDataSource : MovieLocalDataSource {
 
-    override val invalidationTracker = TableInvalidationTracker()
+    /**
+     * Not emulated. The paging source is sqllin's own, invalidating itself from SQLite's change
+     * counts, so a fake one would only test itself; the pager is tested against a real database
+     * instead, in OfflineFirstPagerTest.
+     */
+    override fun pagingSource(listKey: String): PagingSource<Int, MovieEntity> =
+        error("page through a real database: see OfflineFirstPagerTest")
 
     private val moviesById = mutableMapOf<Long, Movie>()
     private val entriesByList = mutableMapOf<String, MutableList<MovieListEntryEntity>>()
@@ -55,7 +62,6 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
             listEntriesFor(listKey, FIRST_PAGE, pageSize, fresh.map(Movie::id)).toMutableList()
         fresh.forEach { moviesById[it.id] = it }
         cursors[listKey] = cursor
-        invalidationTracker.notifyChanged(listKey)
     }
 
     override suspend fun appendPage(
@@ -74,7 +80,6 @@ internal class FakeMovieLocalDataSource : MovieLocalDataSource {
             .filterNot { it.movieId in alreadyStored }
         fresh.forEach { moviesById[it.id] = it }
         cursors[listKey] = cursor
-        invalidationTracker.notifyChanged(listKey)
     }
 
     override suspend fun movie(id: Long): Movie? = moviesById[id]

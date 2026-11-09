@@ -1,12 +1,12 @@
 package com.qiaoyuang.movie.test
 
 import com.qiaoyuang.movie.model.domain.Movie
-import com.qiaoyuang.movie.model.local.MovieGenreEntity
+import com.qiaoyuang.movie.model.local.GenreIdsAsJson
 import com.qiaoyuang.movie.model.local.distinctMovies
 import com.qiaoyuang.movie.model.local.listEntriesFor
 import com.qiaoyuang.movie.model.local.toDomain
 import com.qiaoyuang.movie.model.local.toEntity
-import com.qiaoyuang.movie.model.local.toGenreCrossRefs
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -32,27 +32,22 @@ class EntityMappersTest {
     @Test
     fun movieSurvivesARoundTripThroughTheEntity() {
         val original = movie(1L, listOf(28, 12))
-        val restored = original.toEntity().toDomain(original.genreIds)
-        assertEquals(original, restored)
+        assertEquals(original, original.toEntity().toDomain())
+        // Absent genres stay absent rather than becoming an empty list.
+        assertNull(movie(2L).toEntity().toDomain().genreIds)
     }
 
+    /**
+     * The column converter is ordinary kotlinx.serialization, so its round trip can be checked
+     * without a database: order, an empty list and duplicates all have to come back as given.
+     */
     @Test
-    fun genresAreRebuiltPerMovieFromTheJunctionRows() {
-        val movies = listOf(movie(1L, listOf(28, 12)), movie(2L, listOf(35)), movie(3L))
-        val crossRefs = movies.flatMap(Movie::toGenreCrossRefs)
-        assertEquals(3, crossRefs.size)
-
-        val restored = movies.map(Movie::toEntity).toDomain(crossRefs)
-        assertEquals(listOf(28, 12), restored[0].genreIds)
-        assertEquals(listOf(35), restored[1].genreIds)
-        // A movie with no rows reads back as null, matching an API response that omits genre_ids.
-        assertNull(restored[2].genreIds)
-    }
-
-    @Test
-    fun genreCrossRefsCarryTheOwningMovieId() {
-        assertEquals(listOf(MovieGenreEntity(movieId = 7L, genreId = 99)), movie(7L, listOf(99)).toGenreCrossRefs())
-        assertEquals(emptyList(), movie(7L).toGenreCrossRefs())
+    fun genreIdsKeepTheirOrderThroughTheColumnConverter() {
+        val json = Json
+        for (ids in listOf(listOf(28, 12), listOf(12, 28), emptyList(), listOf(35, 35))) {
+            val stored = json.encodeToString(GenreIdsAsJson, ids)
+            assertEquals(ids, json.decodeFromString(GenreIdsAsJson, stored))
+        }
     }
 
     @Test

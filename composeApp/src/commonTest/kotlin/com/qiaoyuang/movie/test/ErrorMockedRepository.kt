@@ -1,12 +1,15 @@
 package com.qiaoyuang.movie.test
 
 import androidx.collection.IntObjectMap
+import androidx.paging.PagingData
 import com.qiaoyuang.movie.model.MovieRepository
 import com.qiaoyuang.movie.model.Result
 import com.qiaoyuang.movie.model.domain.Movie
 import com.qiaoyuang.movie.model.domain.MovieGenre
 import com.qiaoyuang.movie.model.domain.MovieResponse
 import com.qiaoyuang.movie.model.MovieDataException
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * A [MovieRepository] whose every call fails with [ERROR], used to drive the error branches of
@@ -30,6 +33,10 @@ internal class ErrorMockedRepository : MovieRepository {
     override suspend fun similarMovies(movieId: Long, page: Int): Result<MovieResponse, MovieDataException> = Result.Error(ERROR)
 
     override suspend fun similarMoviesFirstPage(movieId: Long): Result<List<Movie>, MovieDataException> = Result.Error(ERROR)
+
+    override fun pagedTopRatedMovies(): Flow<PagingData<Movie>> = flowOf(PagingData.empty())
+
+    override fun pagedSimilarMovies(movieId: Long): Flow<PagingData<Movie>> = flowOf(PagingData.empty())
 
     override suspend fun fetchMovieGenre(): Result<List<MovieGenre>, MovieDataException> = Result.Error(ERROR)
 
